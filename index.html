@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>For You</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@500&display=swap');
+
+        body, html {
+            height: 100%;
+            margin: 0;
+            font-family: 'Raleway', sans-serif;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #0b0c10;
+            overflow: hidden;
+            color: #d1d1d1;
+        }
+        .background {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+        .background .star {
+            position: absolute;
+            background-color: #ffffff;
+            border-radius: 50%;
+        }
+        .twinkle {
+            animation: twinkle 2s infinite alternate;
+        }
+        @keyframes twinkle {
+            from { opacity: 0.4; }
+            to { opacity: 1; }
+        }
+        @keyframes moveStars {
+            from { transform: translateY(0); }
+            to { transform: translateY(-100%); }
+        }
+        .background {
+            animation: moveStars 60s linear infinite;
+        }
+        .shooting-star {
+            position: absolute;
+            width: 2px;
+            height: 200px;
+            background: linear-gradient(white, rgba(255, 255, 255, 0));
+            border-radius: 50%;
+            opacity: 0.8;
+            transform: rotate(-45deg);
+            animation: shoot 5s linear infinite;
+        }
+        @keyframes shoot {
+            0% {
+                top: -50%;
+                left: -50%;
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            100% {
+                top: 100%;
+                left: 100%;
+                opacity: 0;
+            }
+        }
+        .letter {
+            max-width: 600px;
+            padding: 30px;
+            background: rgba(11, 12, 16, 0.8);
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            z-index: 1;
+            position: relative;
+            font-size: 1.1em;
+        }
+        .hidden-message {
+            display: none;
+            color: #d1d1d1;
+            margin-top: 20px;
+        }
+        .show-button, .whatsapp-button {
+            background-color: #1c2833;
+            color: #d1d1d1;
+            border: none;
+            padding: 10px 20px;
+            margin-top: 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            display: inline-block;
+        }
+        .show-button:hover, .whatsapp-button:hover {
+            background-color: #34495e;
+        }
+    </style>
+</head>
+<body>
+    <div class="background" id="background"></div>
+    <div class="letter">
+        <h1>For You</h1>
+        <p>Gadhu,</p>
+        <p>Thank you for believing in me and holding onto me even with the distance between us. Your understanding and support mean the world to me. I know we planned to meet, but unforeseen circumstances have kept us apart. Yet, you've been there for me, and I am deeply grateful.</p>
+        <p>Thank you for being my strength and my comfort. I love you more than words can express.</p>
+        <p>With all my heart,</p>
+        <p>Yours Bibi</p>
+        <button class="show-button" onclick="showMessage()">Show Hidden Message</button>
+        <a class="whatsapp-button" href="https://wa.me/1234567890?text=You%20are%20my%20star%20in%20the%20darkest%20night.%20I%20love%20you%20always." target="_blank">Share on WhatsApp</a>
+        <div class="hidden-message" id="hiddenMessage">
+            <p>You are my star in the darkest night. I love you always.</p>
+        </div>
+    </div>
+
+    <script>
+        function createStar() {
+            const star = document.createElement('div');
+            const size = Math.random() * 3 + 1;
+            const opacity = Math.random() * 0.6 + 0.4;
+            star.classList.add('star', 'twinkle');
+            star.style.width = `${size}px`;
+            star.style.height = `${size}px`;
+            star.style.top = `${Math.random() * 100}%`;
+            star.style.left = `${Math.random() * 100}%`;
+            star.style.opacity = opacity;
+            return star;
+        }
+
+        function createShootingStar() {
+            const shootingStar = document.createElement('div');
+            shootingStar.classList.add('shooting-star');
+            shootingStar.style.top = `${Math.random() * 100}%`;
+            shootingStar.style.left = `${Math.random() * 100}%`;
+            return shootingStar;
+        }
+
+        function generateStars() {
+            const background = document.getElementById('background');
+            for (let i = 0; i < 200; i++) {
+                background.appendChild(createStar());
+            }
+            for (let i = 0; i < 3; i++) {
+                background.appendChild(createShootingStar());
+            }
+        }
+
+        function showMessage() {
+            document.getElementById('hiddenMessage').style.display = 'block';
+        }
+
+        document.addEventListener('DOMContentLoaded', generateStars);
+    </script>
+</body>
+</html>
