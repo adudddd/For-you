@@ -1,57 +1,88 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bounce on me</title>
+    <title>Dynamic Flower Popping Game</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
             background-color: #e6f7e6;
+            font-family: Arial, sans-serif;
         }
         .flower {
             position: absolute;
-            width: 50px;
-            height: 50px;
             cursor: pointer;
         }
-        .message {
+        #start-button, #end-screen {
             position: absolute;
-            background-color: rgba(255, 255, 255, 0.9);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px 40px;
+            font-size: 24px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            text-align: center;
+        }
+        #game-info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: rgba(255, 255, 255, 0.7);
             padding: 10px;
             border-radius: 5px;
+            font-size: 18px;
+        }
+        #end-screen {
             display: none;
-            max-width: 200px;
-            text-align: center;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 10px;
         }
     </style>
 </head>
 <body>
     <div id="flower-container"></div>
+    <button id="start-button">Start Game</button>
+    <div id="game-info" style="display: none;">
+        <div>Time: <span id="time">60</span>s</div>
+        <div>Score: <span id="score">0</span></div>
+    </div>
+    <div id="end-screen">
+        <h2>Game Over!</h2>
+        <p>Your score: <span id="final-score"></span></p>
+        <button id="restart-button">Play Again</button>
+    </div>
 
     <script>
         const container = document.getElementById('flower-container');
-        const flowers = [];
-        const messages = [
-            "I love the way you say BEHHH!",
-            "I LOVE sometimes you say BIWI and almost a min after BC!",
-            "You got the heart of 5 year old and 50 year old brain!",
-            "Your HEHEHE hassi makes me smile everytime!",
-            "you have got the ASS better than whole KARDASHIANS"
-        ];
+        const startButton = document.getElementById('start-button');
+        const gameInfo = document.getElementById('game-info');
+        const timeDisplay = document.getElementById('time');
+        const scoreDisplay = document.getElementById('score');
+        const endScreen = document.getElementById('end-screen');
+        const finalScoreDisplay = document.getElementById('final-score');
+        const restartButton = document.getElementById('restart-button');
+        let flowers = [];
+        let gameInProgress = false;
+        let score = 0;
+        let timeLeft = 60;
+        let speedMultiplier = 1;
 
-        function createFlowerSVG() {
+        function createFlowerSVG(size = 50) {
             const svgNS = "http://www.w3.org/2000/svg";
             const svg = document.createElementNS(svgNS, "svg");
             svg.setAttribute("viewBox", "0 0 100 100");
-            svg.setAttribute("width", "50");
-            svg.setAttribute("height", "50");
+            svg.setAttribute("width", size);
+            svg.setAttribute("height", size);
 
             const flower = document.createElementNS(svgNS, "g");
 
-            // Create petals
             for (let i = 0; i < 5; i++) {
                 const petal = document.createElementNS(svgNS, "ellipse");
                 petal.setAttribute("cx", "50");
@@ -63,7 +94,6 @@
                 flower.appendChild(petal);
             }
 
-            // Create center
             const center = document.createElementNS(svgNS, "circle");
             center.setAttribute("cx", "50");
             center.setAttribute("cy", "50");
@@ -75,31 +105,41 @@
             return svg;
         }
 
-        function createFlower() {
+        function createFlower(size = 50) {
             const flower = document.createElement('div');
             flower.className = 'flower';
-            flower.style.left = Math.random() * (window.innerWidth - 50) + 'px';
-            flower.style.top = Math.random() * (window.innerHeight - 50) + 'px';
+            flower.style.left = Math.random() * (window.innerWidth - size) + 'px';
+            flower.style.top = Math.random() * (window.innerHeight - size) + 'px';
             
-            const dx = (Math.random() - 0.5) * 4;
-            const dy = (Math.random() - 0.5) * 4;
+            const dx = ((Math.random() - 0.5) * 4) * speedMultiplier;
+            const dy = ((Math.random() - 0.5) * 4) * speedMultiplier;
             
-            const message = document.createElement('div');
-            message.className = 'message';
-            message.textContent = messages[Math.floor(Math.random() * messages.length)];
-            flower.appendChild(message);
+            flower.appendChild(createFlowerSVG(size));
             
-            flower.appendChild(createFlowerSVG());
-            
-            flower.addEventListener('click', () => toggleMessage(message));
+            flower.addEventListener('click', () => {
+                if (gameInProgress) {
+                    popFlower(flower, size);
+                }
+            });
             
             container.appendChild(flower);
-            flowers.push({ element: flower, dx, dy, message });
+            return { element: flower, dx, dy };
         }
 
-        function toggleMessage(message) {
-            const isVisible = message.style.display === 'block';
-            message.style.display = isVisible ? 'none' : 'block';
+        function popFlower(flower, size) {
+            container.removeChild(flower);
+            flowers = flowers.filter(f => f.element !== flower);
+            score++;
+            scoreDisplay.textContent = score;
+            
+            // Increase speed as score increases
+            speedMultiplier = 1 + (score / 50); // Adjust this formula to change difficulty progression
+
+            if (size > 25) {
+                for (let i = 0; i < 3; i++) {
+                    flowers.push(createFlower(size / 2));
+                }
+            }
         }
 
         function moveFlowers() {
@@ -117,14 +157,48 @@
                 flower.element.style.top = rect.top + flower.dy + 'px';
             });
             
-            requestAnimationFrame(moveFlowers);
+            if (gameInProgress) {
+                requestAnimationFrame(moveFlowers);
+            }
         }
 
-        for (let i = 0; i < 12; i++) {
-            createFlower();
+        function startGame() {
+            gameInProgress = true;
+            score = 0;
+            timeLeft = 60;
+            speedMultiplier = 1;
+            flowers = [];
+            container.innerHTML = '';
+            startButton.style.display = 'none';
+            endScreen.style.display = 'none';
+            gameInfo.style.display = 'block';
+            scoreDisplay.textContent = score;
+
+            for (let i = 0; i < 12; i++) {
+                flowers.push(createFlower());
+            }
+
+            moveFlowers();
+            
+            const timer = setInterval(() => {
+                timeLeft--;
+                timeDisplay.textContent = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    endGame();
+                }
+            }, 1000);
         }
 
-        moveFlowers();
+        function endGame() {
+            gameInProgress = false;
+            endScreen.style.display = 'block';
+            gameInfo.style.display = 'none';
+            finalScoreDisplay.textContent = score;
+        }
+
+        startButton.addEventListener('click', startGame);
+        restartButton.addEventListener('click', startGame);
     </script>
 </body>
 </html>
