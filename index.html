@@ -1,237 +1,126 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POP GAME</title>
-    <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: #e6f7e6;
-            font-family: Arial, sans-serif;
-        }
-        .flower {
-            position: absolute;
-            cursor: pointer;
-        }
-        #start-button, #end-screen {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            padding: 20px 40px;
-            font-size: 24px;
-            cursor: pointer;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            text-align: center;
-        }
-        #game-info {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background-color: rgba(255, 255, 255, 0.7);
-            padding: 10px;
-            border-radius: 5px;
-            font-size: 18px;
-        }
-        #end-screen {
-            display: none;
-            background-color: rgba(255, 255, 255, 0.9);
-            padding: 20px;
-            border-radius: 10px;
-        }
-        #final-challenge {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background-color: rgba(255, 0, 0, 0.7);
-            color: white;
-            padding: 10px;
-            border-radius: 5px;
-            font-size: 18px;
-            display: none;
-        }
-    </style>
-</head>
-<body>
-    <div id="flower-container"></div>
-    <button id="start-button">Start Game</button>
-    <div id="game-info" style="display: none;">
-        <div>Time: <span id="time">60</span>s</div>
-        <div>Score: <span id="score">0</span></div>
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+
+const FlowerPetal = ({ rotation, color }) => (
+  <motion.div
+    style={{
+      width: '20px',
+      height: '30px',
+      backgroundColor: color,
+      borderRadius: '50% 50% 50% 50% / 60% 60% 40% 40%',
+      position: 'absolute',
+      top: '-15px',
+      left: '-10px',
+      transformOrigin: 'bottom center',
+      transform: `rotate(${rotation}deg)`,
+    }}
+  />
+);
+
+const Flower = ({ color, size, onClick, animate }) => (
+  <motion.div
+    style={{ width: size, height: size, position: 'relative' }}
+    animate={animate}
+    onClick={onClick}
+  >
+    {[0, 60, 120, 180, 240, 300].map((rotation) => (
+      <FlowerPetal key={rotation} rotation={rotation} color={color} />
+    ))}
+    <motion.div
+      style={{
+        width: size / 3,
+        height: size / 3,
+        borderRadius: '50%',
+        backgroundColor: 'yellow',
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+      }}
+    />
+  </motion.div>
+);
+
+const FlowerGame = () => {
+  const [flowers, setFlowers] = useState([]);
+  const [innerFlowers, setInnerFlowers] = useState([]);
+  const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#F7DB4F', '#9B59B6', '#FF8C00'];
+  const [gameSize, setGameSize] = useState(300);
+
+  useEffect(() => {
+    const initialFlowers = colors.map((color, index) => ({
+      id: index,
+      color,
+      angle: (index / colors.length) * 2 * Math.PI,
+      size: 40,
+      clickCount: 0,
+    }));
+    setFlowers(initialFlowers);
+  }, []);
+
+  const handleFlowerClick = (clickedFlower) => {
+    if (clickedFlower.clickCount === 0) {
+      // First click: Bounce off and return
+      setFlowers((prevFlowers) =>
+        prevFlowers.map((flower) =>
+          flower.id === clickedFlower.id
+            ? { ...flower, clickCount: 1 }
+            : flower
+        )
+      );
+    } else {
+      // Second click: Move to inner circle
+      setFlowers((prevFlowers) =>
+        prevFlowers.filter((flower) => flower.id !== clickedFlower.id)
+      );
+      setInnerFlowers((prevInnerFlowers) => [
+        ...prevInnerFlowers,
+        { ...clickedFlower, size: clickedFlower.size * 0.8 },
+      ]);
+      setGameSize((prevSize) => prevSize * 0.98);
+    }
+  };
+
+  return (
+    <div className="relative" style={{ width: gameSize, height: gameSize }}>
+      {flowers.map((flower) => (
+        <motion.div
+          key={flower.id}
+          className="absolute"
+          style={{
+            left: `${50 + 45 * Math.cos(flower.angle)}%`,
+            top: `${50 + 45 * Math.sin(flower.angle)}%`,
+          }}
+          animate={flower.clickCount === 1 ? {
+            x: [0, -20, 20, 0],
+            y: [0, -20, 20, 0],
+          } : {}}
+          transition={{ duration: 0.5, ease: "easeInOut" }}
+        >
+          <Flower
+            color={flower.color}
+            size={flower.size}
+            onClick={() => handleFlowerClick(flower)}
+          />
+        </motion.div>
+      ))}
+      {innerFlowers.map((flower, index) => (
+        <motion.div
+          key={flower.id}
+          className="absolute"
+          initial={{ scale: 0 }}
+          animate={{
+            scale: 1,
+            left: `${50 + (index / innerFlowers.length) * 30 * Math.cos((index / innerFlowers.length) * 2 * Math.PI)}%`,
+            top: `${50 + (index / innerFlowers.length) * 30 * Math.sin((index / innerFlowers.length) * 2 * Math.PI)}%`,
+          }}
+          transition={{ duration: 0.5 }}
+        >
+          <Flower color={flower.color} size={flower.size} />
+        </motion.div>
+      ))}
     </div>
-    <div id="final-challenge">Final Challenge!</div>
-    <div id="end-screen">
-        <h2>Game Over!</h2>
-        <p>Your score: <span id="final-score"></span></p>
-        <button id="restart-button">Play Again</button>
-    </div>
+  );
+};
 
-    <script>
-        const container = document.getElementById('flower-container');
-        const startButton = document.getElementById('start-button');
-        const gameInfo = document.getElementById('game-info');
-        const timeDisplay = document.getElementById('time');
-        const scoreDisplay = document.getElementById('score');
-        const endScreen = document.getElementById('end-screen');
-        const finalScoreDisplay = document.getElementById('final-score');
-        const restartButton = document.getElementById('restart-button');
-        const finalChallengeDisplay = document.getElementById('final-challenge');
-        let flowers = [];
-        let gameInProgress = false;
-        let score = 0;
-        let timeLeft = 60;
-        let speedMultiplier = 1;
-        let inFinalChallenge = false;
-
-        function createFlowerSVG(size = 50) {
-            const svgNS = "http://www.w3.org/2000/svg";
-            const svg = document.createElementNS(svgNS, "svg");
-            svg.setAttribute("viewBox", "0 0 100 100");
-            svg.setAttribute("width", size);
-            svg.setAttribute("height", size);
-
-            const flower = document.createElementNS(svgNS, "g");
-
-            for (let i = 0; i < 5; i++) {
-                const petal = document.createElementNS(svgNS, "ellipse");
-                petal.setAttribute("cx", "50");
-                petal.setAttribute("cy", "50");
-                petal.setAttribute("rx", "20");
-                petal.setAttribute("ry", "35");
-                petal.setAttribute("fill", inFinalChallenge ? "red" : "pink");
-                petal.setAttribute("transform", `rotate(${i * 72} 50 50)`);
-                flower.appendChild(petal);
-            }
-
-            const center = document.createElementNS(svgNS, "circle");
-            center.setAttribute("cx", "50");
-            center.setAttribute("cy", "50");
-            center.setAttribute("r", "15");
-            center.setAttribute("fill", inFinalChallenge ? "orange" : "yellow");
-            flower.appendChild(center);
-
-            svg.appendChild(flower);
-            return svg;
-        }
-
-        function createFlower(size = 50) {
-            const flower = document.createElement('div');
-            flower.className = 'flower';
-            flower.style.left = Math.random() * (window.innerWidth - size) + 'px';
-            flower.style.top = Math.random() * (window.innerHeight - size) + 'px';
-            
-            const dx = ((Math.random() - 0.5) * 4) * speedMultiplier;
-            const dy = ((Math.random() - 0.5) * 4) * speedMultiplier;
-            
-            flower.appendChild(createFlowerSVG(size));
-            
-            flower.addEventListener('click', () => {
-                if (gameInProgress) {
-                    popFlower(flower, size);
-                }
-            });
-            
-            container.appendChild(flower);
-            return { element: flower, dx, dy };
-        }
-
-        function popFlower(flower, size) {
-            container.removeChild(flower);
-            flowers = flowers.filter(f => f.element !== flower);
-            score++;
-            scoreDisplay.textContent = score;
-            
-            speedMultiplier = 1 + (score / 50);
-
-            if (size > 25 && !inFinalChallenge) {
-                for (let i = 0; i < 3; i++) {
-                    flowers.push(createFlower(size / 2));
-                }
-            }
-
-            if (flowers.length === 0 && timeLeft > 15 && !inFinalChallenge) {
-                startFinalChallenge();
-            }
-        }
-
-        function moveFlowers() {
-            flowers.forEach(flower => {
-                const rect = flower.element.getBoundingClientRect();
-                
-                if (rect.left + flower.dx < 0 || rect.right + flower.dx > window.innerWidth) {
-                    flower.dx = -flower.dx;
-                }
-                if (rect.top + flower.dy < 0 || rect.bottom + flower.dy > window.innerHeight) {
-                    flower.dy = -flower.dy;
-                }
-                
-                flower.element.style.left = rect.left + flower.dx + 'px';
-                flower.element.style.top = rect.top + flower.dy + 'px';
-            });
-            
-            if (gameInProgress) {
-                requestAnimationFrame(moveFlowers);
-            }
-        }
-
-        function startFinalChallenge() {
-            inFinalChallenge = true;
-            speedMultiplier *= 2;
-            finalChallengeDisplay.style.display = 'block';
-            
-            for (let i = 0; i < 20; i++) {
-                flowers.push(createFlower());
-            }
-        }
-
-        function startGame() {
-            gameInProgress = true;
-            score = 0;
-            timeLeft = 60;
-            speedMultiplier = 1;
-            flowers = [];
-            inFinalChallenge = false;
-            container.innerHTML = '';
-            startButton.style.display = 'none';
-            endScreen.style.display = 'none';
-            gameInfo.style.display = 'block';
-            finalChallengeDisplay.style.display = 'none';
-            scoreDisplay.textContent = score;
-
-            for (let i = 0; i < 12; i++) {
-                flowers.push(createFlower());
-            }
-
-            moveFlowers();
-            
-            const timer = setInterval(() => {
-                timeLeft--;
-                timeDisplay.textContent = timeLeft;
-                if (timeLeft <= 15 && !inFinalChallenge) {
-                    startFinalChallenge();
-                }
-                if (timeLeft <= 0) {
-                    clearInterval(timer);
-                    endGame();
-                }
-            }, 1000);
-        }
-
-        function endGame() {
-            gameInProgress = false;
-            endScreen.style.display = 'block';
-            gameInfo.style.display = 'none';
-            finalChallengeDisplay.style.display = 'none';
-            finalScoreDisplay.textContent = score;
-        }
-
-        startButton.addEventListener('click', startGame);
-        restartButton.addEventListener('click', startGame);
-    </script>
-</body>
-</html>
+export default FlowerGame;
