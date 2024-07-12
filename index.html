@@ -1,238 +1,200 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POP GAME</title>
+    <title>Game</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
-            background-color: #e6f7e6;
+            background-color: #f0f8ff;
             font-family: Arial, sans-serif;
         }
-        .flower {
-            position: absolute;
-            cursor: pointer;
+        #game-area {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
         }
-        #start-button, #end-screen {
+        .amoeba {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            padding: 20px 40px;
-            font-size: 24px;
+            border-radius: 50%;
             cursor: pointer;
+            transition: transform 0.3s ease, background-color 0.3s ease;
+            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 70%);
+        }
+        #reset-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 10px 20px;
             background-color: #4CAF50;
             color: white;
             border: none;
             border-radius: 5px;
-            text-align: center;
+            cursor: pointer;
+            font-size: 16px;
         }
-        #game-info {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background-color: rgba(255, 255, 255, 0.7);
-            padding: 10px;
-            border-radius: 5px;
-            font-size: 18px;
-        }
-        #end-screen {
-            display: none;
-            background-color: rgba(255, 255, 255, 0.9);
-            padding: 20px;
-            border-radius: 10px;
-        }
-        #final-challenge {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background-color: rgba(255, 0, 0, 0.7);
-            color: white;
-            padding: 10px;
-            border-radius: 5px;
-            font-size: 18px;
-            display: none;
+        #reset-button:hover {
+            background-color: #45a049;
         }
     </style>
 </head>
 <body>
-    <div id="flower-container"></div>
-    <button id="start-button">Start Game</button>
-    <div id="game-info" style="display: none;">
-        <div>Time: <span id="time">60</span>s</div>
-        <div>Score: <span id="score">0</span></div>
-    </div>
-    <div id="final-challenge">Final Challenge!</div>
-    <div id="end-screen">
-        <h2>Game Over!</h2>
-        <p>Your score: <span id="final-score"></span></p>
-        <button id="restart-button">Play Again</button>
-    </div>
-
+    <div id="game-area"></div>
+    <button id="reset-button">Reset Game</button>
+    <audio id="merge-sound" src="data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQwAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAACAAABhgC1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjU0AAAAAAAAAAAAAAAAJAYAAAAAAAAABYYPbGGhAAAA//tAwAAAB4QXj1BQAglxhCG/AAABMm93Z3Jdnf/Rgc6wKAhuF4KAgCAIA+D9YP//10HfWD/8H18H3/ghCAQBAEBg/8EAQB//BAEAQDBoGgaDf//+D74WOlTni1xOhJHRiIqTiZEYib//qpPnCWH9WpFgya1YxC1lpf/6kjZ0vUiotNKnHUymU7f/9avJpGIzkiUoaeo45J5UpS9v//sUj2Ik9Wq/W1p1esSfZUo6kyZIkn////2U6kYjMkydSSoiIzIzM//0RmSI//9ESZNlV6szjgiBER/zERERERERERERE=" preload="auto"></audio>
+    <audio id="split-sound" src="data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQwAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAACAAABhgC1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjU0AAAAAAAAAAAAAAAAJAQAAAAAAAAABYZhvWitAAAA//tAwAAAB3QfjXBQAAxoCDHOgAABS4dydhSfQi4uqFD+IWQ0g4UgquCDgx//9cHIOD9YOCg/B+sFAgCAYKBgoEAx///nPqAYLB//BBgEAQDBQIBAfwQBwP//9YIHA4CAIAgCAIAgCAKA4DgIBr///wfAoEAQBAIAgCAQBA//84nWZt1fX+lsEiYCkqPb1YGjcTx8ek0/////jKLwTE4a9YjTE3u8amIXieMRBGI//6Ypj8D4uDp/xE4njYqGolwbGIiP///0xn4XBeEomjUjcVDEwfOgwVC8VDUzGZn///9o+FwRheGIhjeNheLgyMxkZmZyHqTKQv//9MZHQXBKGIWg6Ng6NxgwEoXBcZjMzM//1GdBwFoYheFoNjcOjQUC8WCoYHDMZmZ////3KZ2HImC8NQ9G4ehiLRsJwxFoaj9zM//90yHIcheFoUhOD41GIrGQpFoaj///zZ/Mj0Iw1C0JwfGoxFYyFItDUf///4yPZHsdhWFoUg+Mw5GImFYvEQ5H////yf9IziULQnB8ZhyMRMKxeIhyP///+0j+JZeEIWg6LRQJBCIhGIBCFIaj////vJnlkwcBwEQSBAGwOA0BwFAMAgCAN///5JQcAgCgIAgCAIAgCAMAgCAIA3///lAEAQBAEAQBAEAQBAEAQBAG////KAIAAAA=" preload="auto"></audio>
     <script>
-        const container = document.getElementById('flower-container');
-        const startButton = document.getElementById('start-button');
-        const gameInfo = document.getElementById('game-info');
-        const timeDisplay = document.getElementById('time');
-        const scoreDisplay = document.getElementById('score');
-        const endScreen = document.getElementById('end-screen');
-        const finalScoreDisplay = document.getElementById('final-score');
-        const restartButton = document.getElementById('restart-button');
-        const finalChallengeDisplay = document.getElementById('final-challenge');
-        let flowers = [];
-        let gameInProgress = false;
-        let score = 0;
-        let timeLeft = 60;
-        let speedMultiplier = 1;
-        let inFinalChallenge = false;
+        const gameArea = document.getElementById('game-area');
+        const mergeSound = document.getElementById('merge-sound');
+        const splitSound = document.getElementById('split-sound');
+        const amoebas = [];
+        let draggedAmoeba = null;
 
-        function createFlowerSVG(size = 50) {
-            const svgNS = "http://www.w3.org/2000/svg";
-            const svg = document.createElementNS(svgNS, "svg");
-            svg.setAttribute("viewBox", "0 0 100 100");
-            svg.setAttribute("width", size);
-            svg.setAttribute("height", size);
+        function createAmoeba(x, y, size, color) {
+            const amoeba = document.createElement('div');
+            amoeba.className = 'amoeba';
+            amoeba.style.left = `${x}px`;
+            amoeba.style.top = `${y}px`;
+            amoeba.style.width = `${size}px`;
+            amoeba.style.height = `${size}px`;
+            amoeba.style.backgroundColor = color || getRandomColor();
+            gameArea.appendChild(amoeba);
 
-            const flower = document.createElementNS(svgNS, "g");
+            const amoebaObj = {
+                element: amoeba,
+                x,
+                y,
+                size,
+                vx: (Math.random() - 0.5) * 2,
+                vy: (Math.random() - 0.5) * 2,
+                merged: false,
+                originalColor: amoeba.style.backgroundColor
+            };
 
-            for (let i = 0; i < 5; i++) {
-                const petal = document.createElementNS(svgNS, "ellipse");
-                petal.setAttribute("cx", "50");
-                petal.setAttribute("cy", "50");
-                petal.setAttribute("rx", "20");
-                petal.setAttribute("ry", "35");
-                petal.setAttribute("fill", inFinalChallenge ? "red" : "pink");
-                petal.setAttribute("transform", `rotate(${i * 72} 50 50)`);
-                flower.appendChild(petal);
-            }
+            amoeba.addEventListener('mousedown', (e) => startDragging(e, amoebaObj));
+            amoeba.addEventListener('touchstart', (e) => startDragging(e.touches[0], amoebaObj));
 
-            const center = document.createElementNS(svgNS, "circle");
-            center.setAttribute("cx", "50");
-            center.setAttribute("cy", "50");
-            center.setAttribute("r", "15");
-            center.setAttribute("fill", inFinalChallenge ? "orange" : "yellow");
-            flower.appendChild(center);
-
-            svg.appendChild(flower);
-            return svg;
+            amoebas.push(amoebaObj);
+            return amoebaObj;
         }
 
-        function createFlower(size = 50) {
-            const flower = document.createElement('div');
-            flower.className = 'flower';
-            flower.style.left = Math.random() * (window.innerWidth - size) + 'px';
-            flower.style.top = Math.random() * (window.innerHeight - size) + 'px';
-            
-            const dx = ((Math.random() - 0.5) * 4) * speedMultiplier;
-            const dy = ((Math.random() - 0.5) * 4) * speedMultiplier;
-            
-            flower.appendChild(createFlowerSVG(size));
-            
-            flower.addEventListener('click', () => {
-                if (gameInProgress) {
-                    popFlower(flower, size);
+        function getRandomColor() {
+            return `hsl(${Math.random() * 360}, 80%, 60%)`;
+        }
+
+        function startDragging(e, amoeba) {
+            if (amoeba.merged) {
+                splitAmoeba(amoeba);
+            } else {
+                draggedAmoeba = amoeba;
+                amoeba.element.style.zIndex = 1000;
+            }
+            e.preventDefault();
+        }
+
+        function stopDragging() {
+            if (draggedAmoeba) {
+                draggedAmoeba.element.style.zIndex = '';
+                draggedAmoeba = null;
+            }
+        }
+
+        function drag(e) {
+            if (!draggedAmoeba) return;
+
+            const clientX = e.clientX || e.touches[0].clientX;
+            const clientY = e.clientY || e.touches[0].clientY;
+
+            draggedAmoeba.x = clientX - draggedAmoeba.size / 2;
+            draggedAmoeba.y = clientY - draggedAmoeba.size / 2;
+
+            updateAmoebaPosition(draggedAmoeba);
+            e.preventDefault();
+        }
+
+        function updateAmoebaPosition(amoeba) {
+            amoeba.element.style.left = `${amoeba.x}px`;
+            amoeba.element.style.top = `${amoeba.y}px`;
+        }
+
+        function moveAmoebas() {
+            amoebas.forEach(amoeba => {
+                if (amoeba !== draggedAmoeba && !amoeba.merged) {
+                    amoeba.vx += (Math.random() - 0.5) * 0.1;
+                    amoeba.vy += (Math.random() - 0.5) * 0.1;
+                    amoeba.vx *= 0.99;
+                    amoeba.vy *= 0.99;
+                    
+                    amoeba.x += amoeba.vx;
+                    amoeba.y += amoeba.vy;
+
+                    if (amoeba.x < 0 || amoeba.x > gameArea.clientWidth - amoeba.size) amoeba.vx *= -1;
+                    if (amoeba.y < 0 || amoeba.y > gameArea.clientHeight - amoeba.size) amoeba.vy *= -1;
+
+                    updateAmoebaPosition(amoeba);
                 }
             });
-            
-            container.appendChild(flower);
-            return { element: flower, dx, dy };
         }
 
-        function popFlower(flower, size) {
-            container.removeChild(flower);
-            flowers = flowers.filter(f => f.element !== flower);
-            score++;
-            scoreDisplay.textContent = score;
-            
-            speedMultiplier = 1 + (score / 50);
+        function mergeAmoebas() {
+            for (let i = 0; i < amoebas.length; i++) {
+                for (let j = i + 1; j < amoebas.length; j++) {
+                    const amoeba1 = amoebas[i];
+                    const amoeba2 = amoebas[j];
 
-            if (size > 25 && !inFinalChallenge) {
-                for (let i = 0; i < 3; i++) {
-                    flowers.push(createFlower(size / 2));
+                    if (!amoeba1.merged && !amoeba2.merged && isColliding(amoeba1, amoeba2)) {
+                        performMerge(amoeba1, amoeba2);
+                    }
                 }
-            }
-
-            if (flowers.length === 0 && timeLeft > 15 && !inFinalChallenge) {
-                startFinalChallenge();
             }
         }
 
-        function moveFlowers() {
-            flowers.forEach(flower => {
-                const rect = flower.element.getBoundingClientRect();
-                
-                if (rect.left + flower.dx < 0 || rect.right + flower.dx > window.innerWidth) {
-                    flower.dx = -flower.dx;
-                }
-                if (rect.top + flower.dy < 0 || rect.bottom + flower.dy > window.innerHeight) {
-                    flower.dy = -flower.dy;
-                }
-                
-                flower.element.style.left = rect.left + flower.dx + 'px';
-                flower.element.style.top = rect.top + flower.dy + 'px';
-            });
-            
-            if (gameInProgress) {
-                requestAnimationFrame(moveFlowers);
-            }
+        function isColliding(amoeba1, amoeba2) {
+            const dx = amoeba1.x + amoeba1.size / 2 - (amoeba2.x + amoeba2.size / 2);
+            const dy = amoeba1.y + amoeba1.size / 2 - (amoeba2.y + amoeba2.size / 2);
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            return distance < amoeba1.size / 2 + amoeba2.size / 2;
         }
 
-        function startFinalChallenge() {
-            inFinalChallenge = true;
-            speedMultiplier *= 2;
-            finalChallengeDisplay.style.display = 'block';
-            
-            for (let i = 0; i < 20; i++) {
-                flowers.push(createFlower());
+        function performMerge(amoeba1, amoeba2) {
+            amoeba1.element.style.backgroundColor = 'lightblue';
+            amoeba2.element.style.backgroundColor = 'lightblue';
+            amoeba1.merged = true;
+            amoeba2.merged = true;
+            mergeSound.play();
+        }
+
+        function splitAmoeba(amoeba) {
+            amoeba.element.style.backgroundColor = amoeba.originalColor;
+            amoeba.merged = false;
+            splitSound.play();
+        }
+
+        function resetGame() {
+            gameArea.innerHTML = '';
+            amoebas.length = 0;
+            for (let i = 0; i < 10; i++) {
+                createAmoeba(
+                    Math.random() * (gameArea.clientWidth - 50),
+                    Math.random() * (gameArea.clientHeight - 50),
+                    50
+                );
             }
         }
 
-        function startGame() {
-            gameInProgress = true;
-            score = 0;
-            timeLeft = 60;
-            speedMultiplier = 1;
-            flowers = [];
-            inFinalChallenge = false;
-            container.innerHTML = '';
-            startButton.style.display = 'none';
-            endScreen.style.display = 'none';
-            gameInfo.style.display = 'block';
-            finalChallengeDisplay.style.display = 'none';
-            scoreDisplay.textContent = score;
+        document.getElementById('reset-button').addEventListener('click', resetGame);
+        document.addEventListener('mouseup', stopDragging);
+        document.addEventListener('touchend', stopDragging);
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('touchmove', drag);
 
-            for (let i = 0; i < 12; i++) {
-                flowers.push(createFlower());
-            }
-
-            moveFlowers();
-            
-            const timer = setInterval(() => {
-                timeLeft--;
-                timeDisplay.textContent = timeLeft;
-                if (timeLeft <= 15 && !inFinalChallenge) {
-                    startFinalChallenge();
-                }
-                if (timeLeft <= 0) {
-                    clearInterval(timer);
-                    endGame();
-                }
-            }, 1000);
-        }
-
-        function endGame() {
-            gameInProgress = false;
-            endScreen.style.display = 'block';
-            gameInfo.style.display = 'none';
-            finalChallengeDisplay.style.display = 'none';
-            finalScoreDisplay.textContent = score;
-        }
-
-        startButton.addEventListener('click', startGame);
-        restartButton.addEventListener('click', startGame);
+        resetGame();
+        setInterval(() => {
+            moveAmoebas();
+            mergeAmoebas();
+        }, 20);
     </script>
 </body>
 </html>
