@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game</title>
+    <title>Advanced Amoeba Game</title>
     <style>
         body {
             margin: 0;
@@ -52,7 +52,7 @@
         const amoebas = [];
         let draggedAmoeba = null;
 
-        function createAmoeba(x, y, size, color) {
+        function createAmoeba(x, y, size, color, speed = 1) {
             const amoeba = document.createElement('div');
             amoeba.className = 'amoeba';
             amoeba.style.left = `${x}px`;
@@ -67,10 +67,11 @@
                 x,
                 y,
                 size,
-                vx: (Math.random() - 0.5) * 2,
-                vy: (Math.random() - 0.5) * 2,
+                vx: (Math.random() - 0.5) * 2 * speed,
+                vy: (Math.random() - 0.5) * 2 * speed,
                 merged: false,
-                originalColor: amoeba.style.backgroundColor
+                originalColor: amoeba.style.backgroundColor,
+                speed: speed
             };
 
             amoeba.addEventListener('mousedown', (e) => startDragging(e, amoebaObj));
@@ -88,29 +89,8 @@
             if (amoeba.merged) {
                 splitAmoeba(amoeba);
             } else {
-                draggedAmoeba = amoeba;
-                amoeba.element.style.zIndex = 1000;
+                popAmoeba(amoeba);
             }
-            e.preventDefault();
-        }
-
-        function stopDragging() {
-            if (draggedAmoeba) {
-                draggedAmoeba.element.style.zIndex = '';
-                draggedAmoeba = null;
-            }
-        }
-
-        function drag(e) {
-            if (!draggedAmoeba) return;
-
-            const clientX = e.clientX || e.touches[0].clientX;
-            const clientY = e.clientY || e.touches[0].clientY;
-
-            draggedAmoeba.x = clientX - draggedAmoeba.size / 2;
-            draggedAmoeba.y = clientY - draggedAmoeba.size / 2;
-
-            updateAmoebaPosition(draggedAmoeba);
             e.preventDefault();
         }
 
@@ -121,9 +101,9 @@
 
         function moveAmoebas() {
             amoebas.forEach(amoeba => {
-                if (amoeba !== draggedAmoeba && !amoeba.merged) {
-                    amoeba.vx += (Math.random() - 0.5) * 0.1;
-                    amoeba.vy += (Math.random() - 0.5) * 0.1;
+                if (!amoeba.merged) {
+                    amoeba.vx += (Math.random() - 0.5) * 0.1 * amoeba.speed;
+                    amoeba.vy += (Math.random() - 0.5) * 0.1 * amoeba.speed;
                     amoeba.vx *= 0.99;
                     amoeba.vy *= 0.99;
                     
@@ -172,6 +152,21 @@
             splitSound.play();
         }
 
+        function popAmoeba(amoeba) {
+            if (amoeba.size > 20) {
+                const newSize = amoeba.size / 2;
+                const newSpeed = amoeba.speed * 1.5;
+                
+                createAmoeba(amoeba.x, amoeba.y, newSize, amoeba.originalColor, newSpeed);
+                createAmoeba(amoeba.x + newSize, amoeba.y, newSize, amoeba.originalColor, newSpeed);
+                
+                amoeba.element.remove();
+                amoebas.splice(amoebas.indexOf(amoeba), 1);
+                
+                splitSound.play();
+            }
+        }
+
         function resetGame() {
             gameArea.innerHTML = '';
             amoebas.length = 0;
@@ -185,10 +180,6 @@
         }
 
         document.getElementById('reset-button').addEventListener('click', resetGame);
-        document.addEventListener('mouseup', stopDragging);
-        document.addEventListener('touchend', stopDragging);
-        document.addEventListener('mousemove', drag);
-        document.addEventListener('touchmove', drag);
 
         resetGame();
         setInterval(() => {
