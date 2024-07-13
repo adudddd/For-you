@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Amoeba Survival Game</title>
+    <title>Game</title>
     <style>
         body {
             margin: 0;
@@ -22,10 +22,15 @@
             cursor: pointer;
             transition: transform 0.3s ease;
         }
-        .food {
+        .food, .power-up {
             position: absolute;
             border-radius: 50%;
             background-color: #00ff00;
+        }
+        .power-up {
+            background-color: #ff00ff;
+            width: 20px;
+            height: 20px;
         }
         #hud {
             position: absolute;
@@ -84,12 +89,16 @@
 
         let amoebas = [];
         let foodParticles = [];
+        let powerUps = [];
         let score = 0;
         let gameTime = 600; // 10 minutes in seconds
         let gameInterval;
         let isBossFight = false;
+        let level = 1;
+        let player = null;
 
         const colors = ['#ff9999', '#99ff99', '#9999ff', '#ffff99', '#ff99ff', '#99ffff'];
+        const powerUpTypes = ['speed', 'size', 'immunity'];
 
         function createAmoeba(x, y, size, color, speed = 0.5, health = 3) {
             const amoeba = document.createElement('div');
@@ -135,6 +144,28 @@
                 const foodObj = { element: food, x, y, size };
                 foodParticles.push(foodObj);
             }
+        }
+
+        function createPowerUp() {
+            const powerUp = document.createElement('div');
+            powerUp.className = 'power-up';
+            const size = 20;
+            const x = Math.random() * (gameArea.clientWidth - size);
+            const y = Math.random() * (gameArea.clientHeight - size);
+            powerUp.style.left = `${x}px`;
+            powerUp.style.top = `${y}px`;
+            gameArea.appendChild(powerUp);
+
+            const powerUpObj = { element: powerUp, x, y, size, type: powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)] };
+            powerUps.push(powerUpObj);
+
+            setTimeout(() => {
+                powerUp.element.remove();
+                const index = powerUps.indexOf(powerUpObj);
+                if (index > -1) {
+                    powerUps.splice(index, 1);
+                }
+            }, 10000); // Power-ups disappear after 10 seconds
         }
 
         function updateAmoebaPosition(amoeba) {
@@ -206,25 +237,51 @@
             foodParticles.splice(foodIndex, 1);
         }
 
-        function clickAmoeba(amoeba) {
-            amoeba.health--;
-            amoeba.size *= 0.8;
-            amoeba.speed *= 1.05;
-            amoeba.element.style.width = `${amoeba.size}px`;
-            amoeba.element.style.height = `${amoeba.size}px`;
+        function checkPowerUpCollisions() {
+            amoebas.forEach(amoeba => {
+                powerUps.forEach((powerUp, index) => {
+                    if (isColliding(amoeba, powerUp)) {
+                        applyPowerUp(amoeba, powerUp, index);
+                    }
+                });
+            });
+        }
 
-            if (amoeba.health <= 0) {
-                removeAmoeba(amoeba);
-                score++;
-                updateScore();
+        function applyPowerUp(amoeba, powerUp, powerUpIndex) {
+            powerUp.element.remove();
+            powerUps.splice(powerUpIndex, 1);
+
+            switch (powerUp.type) {
+                case 'speed':
+                    amoeba.speed *= 2;
+                    setTimeout(() => amoeba.speed /= 2, 5000); // Speed boost lasts for 5 seconds
+                    break;
+                case 'size':
+                    amoeba.size *= 1.5;
+                    amoeba.element.style.width = `${amoeba.size}px`;
+                    amoeba.element.style.height = `${amoeba.size}px`;
+                    setTimeout(() => {
+                        amoeba.size /= 1.5;
+                        amoeba.element.style.width = `${amoeba.size}px`;
+                        amoeba.element.style.height = `${amoeba.size}px`;
+                    }, 5000); // Size boost lasts for 5 seconds
+                    break;
+                case 'immunity':
+                    amoeba.element.style.border = '2px solid gold';
+                    setTimeout(() => amoeba.element.style.border = '', 5000); // Immunity lasts for 5 seconds
+                    break;
             }
         }
 
-        function removeAmoeba(amoeba) {
-            amoeba.element.remove();
-            const index = amoebas.indexOf(amoeba);
-            if (index > -1) {
-                amoebas.splice(index, 1);
+        function clickAmoeba(amoeba) {
+            if (amoeba.health > 1) {
+                amoeba.health -= 1;
+                amoeba.element.style.transform = `scale(${amoeba.health / 3})`;
+            } else {
+                amoeba.element.remove();
+                amoebas = amoebas.filter(a => a !== amoeba);
+                score += 10;
+                updateScore();
             }
         }
 
@@ -233,25 +290,18 @@
         }
 
         function updateTime() {
+            gameTime -= 1;
             const minutes = Math.floor(gameTime / 60);
             const seconds = gameTime % 60;
-            timeDisplay.textContent = `Time: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+            timeDisplay.textContent = `Time: ${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
 
             if (gameTime <= 0) {
-                endGame(false);
-            } else if (gameTime <= 60 && !isBossFight) {
-                startBossFight();
+                endGame(true);
             }
-
-            gameTime--;
         }
 
-        function startBossFight() {
-            isBossFight = true;
-            amoebas.forEach(removeAmoeba);
-            amoebas = [];
-            
-            const bossSize = Math.min(gameArea.clientWidth, gameArea.clientHeight) * 0.25;
+        function spawnBoss() {
+            const bossSize = 100;
             const bossX = (gameArea.clientWidth - bossSize) / 2;
             const bossY = (gameArea.clientHeight - bossSize) / 2;
             createAmoeba(bossX, bossY, bossSize, '#ff0000', 0.5, 20);
@@ -268,9 +318,12 @@
             gameArea.innerHTML = '';
             amoebas = [];
             foodParticles = [];
+            powerUps = [];
             score = 0;
             gameTime = 600; // 10 minutes
             isBossFight = false;
+            level = 1;
+            player = null;
             updateScore();
             gameOverScreen.style.display = 'none';
 
@@ -286,9 +339,11 @@
             gameInterval = setInterval(() => {
                 moveAmoebas();
                 checkFoodCollisions();
+                checkPowerUpCollisions();
                 updateTime();
 
-                if (Math.random() < 0.1) createFood();
+                if (Math.random() < 0.05) createFood();
+                if (Math.random() < 0.02) createPowerUp();
 
                 if (gameTime % 20 === 0) {
                     createAmoeba(
