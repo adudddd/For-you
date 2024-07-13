@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> Game </title>
+    <title>Game</title>
     <style>
         body {
             margin: 0;
@@ -197,7 +197,7 @@
         }
 
         function consumeFood(amoeba, food, foodIndex) {
-            amoeba.size += 2; // Reduced growth from 5 to 2
+            amoeba.size += 2;
             amoeba.element.style.width = `${amoeba.size}px`;
             amoeba.element.style.height = `${amoeba.size}px`;
             food.element.remove();
@@ -206,8 +206,8 @@
 
         function clickAmoeba(amoeba) {
             amoeba.health--;
-            amoeba.size *= 0.8; // Increased size reduction
-            amoeba.speed *= 1.05; // Reduced speed increase
+            amoeba.size *= 0.8;
+            amoeba.speed *= 1.05;
             amoeba.element.style.width = `${amoeba.size}px`;
             amoeba.element.style.height = `${amoeba.size}px`;
 
@@ -215,10 +215,6 @@
                 removeAmoeba(amoeba);
                 score++;
                 updateScore();
-            }
-
-            if (amoebas.length === 0 && !isBossFight) {
-                startBossFight();
             }
         }
 
@@ -253,11 +249,11 @@
             amoebas.forEach(removeAmoeba);
             amoebas = [];
             
-            const bossSize = Math.min(gameArea.clientWidth, gameArea.clientHeight) * 0.25; // Reduced boss size
+            const bossSize = Math.min(gameArea.clientWidth, gameArea.clientHeight) * 0.25;
             const bossX = (gameArea.clientWidth - bossSize) / 2;
             const bossY = (gameArea.clientHeight - bossSize) / 2;
             
-            createAmoeba(bossX, bossY, bossSize, '#ff0000', 1, 20); // Reduced boss speed and health
+            createAmoeba(bossX, bossY, bossSize, '#ff0000', 0.5, 20);
         }
 
         function endGame(playerWon) {
@@ -277,11 +273,11 @@
             updateScore();
             gameOverScreen.style.display = 'none';
 
-            for (let i = 0; i < 3; i++) { // Reduced initial number of amoebas
+            for (let i = 0; i < 5; i++) {
                 createAmoeba(
                     Math.random() * (gameArea.clientWidth - 50),
                     Math.random() * (gameArea.clientHeight - 50),
-                    40, // Reduced initial size
+                    40,
                     colors[Math.floor(Math.random() * colors.length)]
                 );
             }
@@ -290,12 +286,21 @@
                 moveAmoebas();
                 checkFoodCollisions();
                 updateTime();
-                if (Math.random() < 0.03) createFood(); // Reduced food spawn rate
+                if (Math.random() < 0.1) createFood();
 
-                if (amoebas.length === 0) {
+                if (Math.random() < 0.02) {
+                    createAmoeba(
+                        Math.random() * (gameArea.clientWidth - 50),
+                        Math.random() * (gameArea.clientHeight - 50),
+                        40,
+                        colors[Math.floor(Math.random() * colors.length)]
+                    );
+                }
+
+                if (amoebas.length === 0 && gameTime > 60) {
                     endGame(true);
                 }
-            }, 20);
+            }, 1000);
         }
 
         restartButton.addEventListener('click', resetGame);
