@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game</title>
+    <title>Amoeba Survival Game</title>
     <style>
         body {
             margin: 0;
@@ -120,19 +120,21 @@
         }
 
         function createFood() {
-            const food = document.createElement('div');
-            food.className = 'food';
-            const size = 10;
-            const x = Math.random() * (gameArea.clientWidth - size);
-            const y = Math.random() * (gameArea.clientHeight - size);
-            food.style.left = `${x}px`;
-            food.style.top = `${y}px`;
-            food.style.width = `${size}px`;
-            food.style.height = `${size}px`;
-            gameArea.appendChild(food);
+            for (let i = 0; i < 10; i++) {
+                const food = document.createElement('div');
+                food.className = 'food';
+                const size = 10;
+                const x = Math.random() * (gameArea.clientWidth - size);
+                const y = Math.random() * (gameArea.clientHeight - size);
+                food.style.left = `${x}px`;
+                food.style.top = `${y}px`;
+                food.style.width = `${size}px`;
+                food.style.height = `${size}px`;
+                gameArea.appendChild(food);
 
-            const foodObj = { element: food, x, y, size };
-            foodParticles.push(foodObj);
+                const foodObj = { element: food, x, y, size };
+                foodParticles.push(foodObj);
+            }
         }
 
         function updateAmoebaPosition(amoeba) {
@@ -237,7 +239,7 @@
 
             if (gameTime <= 0) {
                 endGame(false);
-            } else if (gameTime <= 60 && !isBossFight && amoebas.length > 0) {
+            } else if (gameTime <= 60 && !isBossFight) {
                 startBossFight();
             }
 
@@ -252,7 +254,6 @@
             const bossSize = Math.min(gameArea.clientWidth, gameArea.clientHeight) * 0.25;
             const bossX = (gameArea.clientWidth - bossSize) / 2;
             const bossY = (gameArea.clientHeight - bossSize) / 2;
-            
             createAmoeba(bossX, bossY, bossSize, '#ff0000', 0.5, 20);
         }
 
@@ -268,12 +269,12 @@
             amoebas = [];
             foodParticles = [];
             score = 0;
-            gameTime = 600;
+            gameTime = 600; // 10 minutes
             isBossFight = false;
             updateScore();
             gameOverScreen.style.display = 'none';
 
-            for (let i = 0; i < 5; i++) {
+            for (let i = 0; i < 15; i++) {
                 createAmoeba(
                     Math.random() * (gameArea.clientWidth - 50),
                     Math.random() * (gameArea.clientHeight - 50),
@@ -286,9 +287,10 @@
                 moveAmoebas();
                 checkFoodCollisions();
                 updateTime();
+
                 if (Math.random() < 0.1) createFood();
 
-                if (Math.random() < 0.02) {
+                if (gameTime % 20 === 0) {
                     createAmoeba(
                         Math.random() * (gameArea.clientWidth - 50),
                         Math.random() * (gameArea.clientHeight - 50),
@@ -297,8 +299,8 @@
                     );
                 }
 
-                if (amoebas.length === 0 && gameTime > 60) {
-                    endGame(true);
+                if (gameTime % 30 === 0) {
+                    createFood();
                 }
             }, 1000);
         }
