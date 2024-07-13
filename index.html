@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> Game</title>
+    <title>Amoeba Survival Game (10 minutes)</title>
     <style>
         body {
             margin: 0;
@@ -20,46 +20,85 @@
             position: absolute;
             border-radius: 50%;
             cursor: pointer;
-            transition: transform 0.3s ease, background-color 0.3s ease;
-            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 70%);
+            transition: transform 0.3s ease;
         }
-        #reset-button {
+        .food {
+            position: absolute;
+            border-radius: 50%;
+            background-color: #00ff00;
+        }
+        #hud {
             position: absolute;
             top: 10px;
-            right: 10px;
+            left: 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            display: none;
+        }
+        #restart-button {
+            margin-top: 10px;
             padding: 10px 20px;
             background-color: #4CAF50;
             color: white;
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            font-size: 16px;
         }
-        #reset-button:hover {
+        #restart-button:hover {
             background-color: #45a049;
         }
     </style>
 </head>
 <body>
     <div id="game-area"></div>
-    <button id="reset-button">Reset Game</button>
-    <audio id="merge-sound" src="data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQwAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAACAAABhgC1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjU0AAAAAAAAAAAAAAAAJAYAAAAAAAAABYYPbGGhAAAA//tAwAAAB4QXj1BQAglxhCG/AAABMm93Z3Jdnf/Rgc6wKAhuF4KAgCAIA+D9YP//10HfWD/8H18H3/ghCAQBAEBg/8EAQB//BAEAQDBoGgaDf//+D74WOlTni1xOhJHRiIqTiZEYib//qpPnCWH9WpFgya1YxC1lpf/6kjZ0vUiotNKnHUymU7f/9avJpGIzkiUoaeo45J5UpS9v//sUj2Ik9Wq/W1p1esSfZUo6kyZIkn////2U6kYjMkydSSoiIzIzM//0RmSI//9ESZNlV6szjgiBER/zERERERERERERE=" preload="auto"></audio>
-    <audio id="split-sound" src="data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQwAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAACAAABhgC1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjU0AAAAAAAAAAAAAAAAJAQAAAAAAAAABYZhvWitAAAA//tAwAAAB3QfjXBQAAxoCDHOgAABS4dydhSfQi4uqFD+IWQ0g4UgquCDgx//9cHIOD9YOCg/B+sFAgCAYKBgoEAx///nPqAYLB//BBgEAQDBQIBAfwQBwP//9YIHA4CAIAgCAIAgCAKA4DgIBr///wfAoEAQBAIAgCAQBA//84nWZt1fX+lsEiYCkqPb1YGjcTx8ek0/////jKLwTE4a9YjTE3u8amIXieMRBGI//6Ypj8D4uDp/xE4njYqGolwbGIiP///0xn4XBeEomjUjcVDEwfOgwVC8VDUzGZn///9o+FwRheGIhjeNheLgyMxkZmZyHqTKQv//9MZHQXBKGIWg6Ng6NxgwEoXBcZjMzM//1GdBwFoYheFoNjcOjQUC8WCoYHDMZmZ////3KZ2HImC8NQ9G4ehiLRsJwxFoaj9zM//90yHIcheFoUhOD41GIrGQpFoaj///zZ/Mj0Iw1C0JwfGoxFYyFItDUf///4yPZHsdhWFoUg+Mw5GImFYvEQ5H////yf9IziULQnB8ZhyMRMKxeIhyP///+0j+JZeEIWg6LRQJBCIhGIBCFIaj////vJnlkwcBwEQSBAGwOA0BwFAMAgCAN///5JQcAgCgIAgCAIAgCAMAgCAIA3///lAEAQBAEAQBAEAQBAEAQBAG////KAIAAAA=" preload="auto"></audio>
+    <div id="hud">
+        <div id="score">Score: 0</div>
+        <div id="time">Time: 10:00</div>
+    </div>
+    <div id="game-over">
+        <h2 id="game-over-text">Game Over</h2>
+        <p id="final-score"></p>
+        <button id="restart-button">Restart Game</button>
+    </div>
     <script>
         const gameArea = document.getElementById('game-area');
-        const mergeSound = document.getElementById('merge-sound');
-        const splitSound = document.getElementById('split-sound');
-        const amoebas = [];
-        let draggedAmoeba = null;
+        const scoreDisplay = document.getElementById('score');
+        const timeDisplay = document.getElementById('time');
+        const gameOverScreen = document.getElementById('game-over');
+        const gameOverText = document.getElementById('game-over-text');
+        const finalScoreDisplay = document.getElementById('final-score');
+        const restartButton = document.getElementById('restart-button');
 
-        function createAmoeba(x, y, size, color, speed = 1) {
+        let amoebas = [];
+        let foodParticles = [];
+        let score = 0;
+        let gameTime = 600; // 10 minutes in seconds
+        let gameInterval;
+        let isBossFight = false;
+
+        const colors = ['#ff9999', '#99ff99', '#9999ff', '#ffff99', '#ff99ff', '#99ffff'];
+
+        function createAmoeba(x, y, size, color, speed = 0.5, health = 3) {
             const amoeba = document.createElement('div');
             amoeba.className = 'amoeba';
             amoeba.style.left = `${x}px`;
             amoeba.style.top = `${y}px`;
             amoeba.style.width = `${size}px`;
             amoeba.style.height = `${size}px`;
-            amoeba.style.backgroundColor = color || getRandomColor();
+            amoeba.style.backgroundColor = color;
             gameArea.appendChild(amoeba);
 
             const amoebaObj = {
@@ -67,31 +106,33 @@
                 x,
                 y,
                 size,
+                color,
                 vx: (Math.random() - 0.5) * 2 * speed,
                 vy: (Math.random() - 0.5) * 2 * speed,
-                merged: false,
-                originalColor: amoeba.style.backgroundColor,
-                speed: speed
+                speed,
+                health
             };
 
-            amoeba.addEventListener('mousedown', (e) => startDragging(e, amoebaObj));
-            amoeba.addEventListener('touchstart', (e) => startDragging(e.touches[0], amoebaObj));
+            amoeba.addEventListener('click', () => clickAmoeba(amoebaObj));
 
             amoebas.push(amoebaObj);
             return amoebaObj;
         }
 
-        function getRandomColor() {
-            return `hsl(${Math.random() * 360}, 80%, 60%)`;
-        }
+        function createFood() {
+            const food = document.createElement('div');
+            food.className = 'food';
+            const size = 10;
+            const x = Math.random() * (gameArea.clientWidth - size);
+            const y = Math.random() * (gameArea.clientHeight - size);
+            food.style.left = `${x}px`;
+            food.style.top = `${y}px`;
+            food.style.width = `${size}px`;
+            food.style.height = `${size}px`;
+            gameArea.appendChild(food);
 
-        function startDragging(e, amoeba) {
-            if (amoeba.merged) {
-                splitAmoeba(amoeba);
-            } else {
-                popAmoeba(amoeba);
-            }
-            e.preventDefault();
+            const foodObj = { element: food, x, y, size };
+            foodParticles.push(foodObj);
         }
 
         function updateAmoebaPosition(amoeba) {
@@ -101,91 +142,165 @@
 
         function moveAmoebas() {
             amoebas.forEach(amoeba => {
-                if (!amoeba.merged) {
-                    amoeba.vx += (Math.random() - 0.5) * 0.1 * amoeba.speed;
-                    amoeba.vy += (Math.random() - 0.5) * 0.1 * amoeba.speed;
-                    amoeba.vx *= 0.99;
-                    amoeba.vy *= 0.99;
-                    
-                    amoeba.x += amoeba.vx;
-                    amoeba.y += amoeba.vy;
-
-                    if (amoeba.x < 0 || amoeba.x > gameArea.clientWidth - amoeba.size) amoeba.vx *= -1;
-                    if (amoeba.y < 0 || amoeba.y > gameArea.clientHeight - amoeba.size) amoeba.vy *= -1;
-
-                    updateAmoebaPosition(amoeba);
+                const closestFood = findClosestFood(amoeba);
+                if (closestFood) {
+                    const dx = closestFood.x - amoeba.x;
+                    const dy = closestFood.y - amoeba.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    amoeba.vx = (dx / distance) * amoeba.speed;
+                    amoeba.vy = (dy / distance) * amoeba.speed;
                 }
+
+                amoeba.x += amoeba.vx;
+                amoeba.y += amoeba.vy;
+
+                if (amoeba.x < 0 || amoeba.x > gameArea.clientWidth - amoeba.size) amoeba.vx *= -1;
+                if (amoeba.y < 0 || amoeba.y > gameArea.clientHeight - amoeba.size) amoeba.vy *= -1;
+
+                updateAmoebaPosition(amoeba);
             });
         }
 
-        function mergeAmoebas() {
-            for (let i = 0; i < amoebas.length; i++) {
-                for (let j = i + 1; j < amoebas.length; j++) {
-                    const amoeba1 = amoebas[i];
-                    const amoeba2 = amoebas[j];
+        function findClosestFood(amoeba) {
+            let closestFood = null;
+            let closestDistance = Infinity;
 
-                    if (!amoeba1.merged && !amoeba2.merged && isColliding(amoeba1, amoeba2)) {
-                        performMerge(amoeba1, amoeba2);
-                    }
+            foodParticles.forEach(food => {
+                const dx = food.x - amoeba.x;
+                const dy = food.y - amoeba.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    closestFood = food;
                 }
-            }
+            });
+
+            return closestFood;
         }
 
-        function isColliding(amoeba1, amoeba2) {
-            const dx = amoeba1.x + amoeba1.size / 2 - (amoeba2.x + amoeba2.size / 2);
-            const dy = amoeba1.y + amoeba1.size / 2 - (amoeba2.y + amoeba2.size / 2);
+        function checkFoodCollisions() {
+            amoebas.forEach(amoeba => {
+                foodParticles.forEach((food, index) => {
+                    if (isColliding(amoeba, food)) {
+                        consumeFood(amoeba, food, index);
+                    }
+                });
+            });
+        }
+
+        function isColliding(obj1, obj2) {
+            const dx = obj1.x + obj1.size / 2 - (obj2.x + obj2.size / 2);
+            const dy = obj1.y + obj1.size / 2 - (obj2.y + obj2.size / 2);
             const distance = Math.sqrt(dx * dx + dy * dy);
-            return distance < amoeba1.size / 2 + amoeba2.size / 2;
+            return distance < (obj1.size + obj2.size) / 2;
         }
 
-        function performMerge(amoeba1, amoeba2) {
-            amoeba1.element.style.backgroundColor = 'lightblue';
-            amoeba2.element.style.backgroundColor = 'lightblue';
-            amoeba1.merged = true;
-            amoeba2.merged = true;
-            mergeSound.play();
+        function consumeFood(amoeba, food, foodIndex) {
+            amoeba.size += 2; // Reduced growth from 5 to 2
+            amoeba.element.style.width = `${amoeba.size}px`;
+            amoeba.element.style.height = `${amoeba.size}px`;
+            food.element.remove();
+            foodParticles.splice(foodIndex, 1);
         }
 
-        function splitAmoeba(amoeba) {
-            amoeba.element.style.backgroundColor = amoeba.originalColor;
-            amoeba.merged = false;
-            splitSound.play();
-        }
+        function clickAmoeba(amoeba) {
+            amoeba.health--;
+            amoeba.size *= 0.8; // Increased size reduction
+            amoeba.speed *= 1.05; // Reduced speed increase
+            amoeba.element.style.width = `${amoeba.size}px`;
+            amoeba.element.style.height = `${amoeba.size}px`;
 
-        function popAmoeba(amoeba) {
-            if (amoeba.size > 20) {
-                const newSize = amoeba.size / 2;
-                const newSpeed = amoeba.speed * 1.5;
-                
-                createAmoeba(amoeba.x, amoeba.y, newSize, amoeba.originalColor, newSpeed);
-                createAmoeba(amoeba.x + newSize, amoeba.y, newSize, amoeba.originalColor, newSpeed);
-                
-                amoeba.element.remove();
-                amoebas.splice(amoebas.indexOf(amoeba), 1);
-                
-                splitSound.play();
+            if (amoeba.health <= 0) {
+                removeAmoeba(amoeba);
+                score++;
+                updateScore();
             }
+
+            if (amoebas.length === 0 && !isBossFight) {
+                startBossFight();
+            }
+        }
+
+        function removeAmoeba(amoeba) {
+            amoeba.element.remove();
+            const index = amoebas.indexOf(amoeba);
+            if (index > -1) {
+                amoebas.splice(index, 1);
+            }
+        }
+
+        function updateScore() {
+            scoreDisplay.textContent = `Score: ${score}`;
+        }
+
+        function updateTime() {
+            const minutes = Math.floor(gameTime / 60);
+            const seconds = gameTime % 60;
+            timeDisplay.textContent = `Time: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+            if (gameTime <= 0) {
+                endGame(false);
+            } else if (gameTime <= 60 && !isBossFight && amoebas.length > 0) {
+                startBossFight();
+            }
+
+            gameTime--;
+        }
+
+        function startBossFight() {
+            isBossFight = true;
+            amoebas.forEach(removeAmoeba);
+            amoebas = [];
+            
+            const bossSize = Math.min(gameArea.clientWidth, gameArea.clientHeight) * 0.25; // Reduced boss size
+            const bossX = (gameArea.clientWidth - bossSize) / 2;
+            const bossY = (gameArea.clientHeight - bossSize) / 2;
+            
+            createAmoeba(bossX, bossY, bossSize, '#ff0000', 1, 20); // Reduced boss speed and health
+        }
+
+        function endGame(playerWon) {
+            clearInterval(gameInterval);
+            gameOverScreen.style.display = 'block';
+            gameOverText.textContent = playerWon ? 'You Win!' : 'Game Over';
+            finalScoreDisplay.textContent = `Final Score: ${score}`;
         }
 
         function resetGame() {
             gameArea.innerHTML = '';
-            amoebas.length = 0;
-            for (let i = 0; i < 10; i++) {
+            amoebas = [];
+            foodParticles = [];
+            score = 0;
+            gameTime = 600;
+            isBossFight = false;
+            updateScore();
+            gameOverScreen.style.display = 'none';
+
+            for (let i = 0; i < 3; i++) { // Reduced initial number of amoebas
                 createAmoeba(
                     Math.random() * (gameArea.clientWidth - 50),
                     Math.random() * (gameArea.clientHeight - 50),
-                    50
+                    40, // Reduced initial size
+                    colors[Math.floor(Math.random() * colors.length)]
                 );
             }
+
+            gameInterval = setInterval(() => {
+                moveAmoebas();
+                checkFoodCollisions();
+                updateTime();
+                if (Math.random() < 0.03) createFood(); // Reduced food spawn rate
+
+                if (amoebas.length === 0) {
+                    endGame(true);
+                }
+            }, 20);
         }
 
-        document.getElementById('reset-button').addEventListener('click', resetGame);
+        restartButton.addEventListener('click', resetGame);
 
         resetGame();
-        setInterval(() => {
-            moveAmoebas();
-            mergeAmoebas();
-        }, 20);
     </script>
 </body>
 </html>
