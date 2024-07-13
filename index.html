@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game</title>
+    <title>Enhanced Amoeba Pac-Man Game</title>
     <style>
         body {
             margin: 0;
@@ -17,24 +17,65 @@
             height: 600px;
             margin: auto;
             background-color: #000;
+            border: 2px solid #00f;
         }
-        .amoeba, .enemy {
+        .player, .enemy {
             position: absolute;
             border-radius: 50%;
-            transition: transform 0.3s ease;
+            transition: all 0.1s linear;
         }
-        .amoeba {
-            background-color: #00ff00;
+        .player {
+            background-color: #ff0;
+            width: 30px;
+            height: 30px;
         }
         .enemy {
-            background-color: #ff0000;
+            width: 30px;
+            height: 30px;
         }
-        .food {
+        .dot {
             position: absolute;
-            background-color: #ffff00;
+            background-color: #fff;
             border-radius: 50%;
-            width: 10px;
-            height: 10px;
+            width: 6px;
+            height: 6px;
+        }
+        .power-pellet {
+            position: absolute;
+            background-color: #fff;
+            border-radius: 50%;
+            width: 12px;
+            height: 12px;
+            animation: blink 0.5s infinite;
+        }
+        .portal {
+            position: absolute;
+            width: 30px;
+            height: 60px;
+            background: linear-gradient(to right, #00f, #f0f);
+            animation: portal-glow 2s infinite;
+        }
+        .obstacle {
+            position: absolute;
+            background-color: #888;
+            border-radius: 5px;
+        }
+        .fruit {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-size: contain;
+            background-repeat: no-repeat;
+        }
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        @keyframes portal-glow {
+            0% { box-shadow: 0 0 5px #00f; }
+            50% { box-shadow: 0 0 20px #f0f; }
+            100% { box-shadow: 0 0 5px #00f; }
         }
         #hud {
             position: absolute;
@@ -75,6 +116,7 @@
     <div id="hud">
         <div id="score">Score: 0</div>
         <div id="lives">Lives: 3</div>
+        <div id="level">Level: 1</div>
     </div>
     <div id="game-over">
         <h2 id="game-over-text">Game Over</h2>
@@ -85,62 +127,80 @@
         const gameArea = document.getElementById('game-area');
         const scoreDisplay = document.getElementById('score');
         const livesDisplay = document.getElementById('lives');
+        const levelDisplay = document.getElementById('level');
         const gameOverScreen = document.getElementById('game-over');
         const gameOverText = document.getElementById('game-over-text');
         const finalScoreDisplay = document.getElementById('final-score');
         const restartButton = document.getElementById('restart-button');
 
-        let amoebas = [];
-        let foodParticles = [];
+        let player;
+        let dots = [];
+        let powerPellets = [];
         let enemies = [];
+        let portals = [];
+        let obstacles = [];
+        let fruits = [];
         let score = 0;
         let lives = 3;
-        let gameTime = 600; // 10 minutes in seconds
+        let level = 1;
         let gameInterval;
-        let player = null;
+        let powerModeTimer;
+        let fruitSpawnTimer;
 
         const directions = ['up', 'down', 'left', 'right'];
-        const colors = ['#ff9999', '#99ff99', '#9999ff', '#ffff99', '#ff99ff', '#99ffff'];
+        const enemyTypes = [
+            { color: '#f00', speed: 2 },
+            { color: '#f0f', speed: 2.5 },
+            { color: '#0ff', speed: 1.5 },
+            { color: '#f80', speed: 3 }
+        ];
+        const fruitTypes = ['🍒', '🍓', '🍊', '🍎', '🍉'];
 
-        function createAmoeba(x, y, size, color, speed = 2) {
-            const amoeba = document.createElement('div');
-            amoeba.className = 'amoeba';
-            amoeba.style.left = `${x}px`;
-            amoeba.style.top = `${y}px`;
-            amoeba.style.width = `${size}px`;
-            amoeba.style.height = `${size}px`;
-            amoeba.style.backgroundColor = color;
-            gameArea.appendChild(amoeba);
+        function createPlayer(x, y) {
+            const playerElement = document.createElement('div');
+            playerElement.className = 'player';
+            playerElement.style.left = `${x}px`;
+            playerElement.style.top = `${y}px`;
+            gameArea.appendChild(playerElement);
 
-            const amoebaObj = {
-                element: amoeba,
+            return {
+                element: playerElement,
                 x,
                 y,
-                size,
-                color,
-                speed,
-                direction: directions[Math.floor(Math.random() * directions.length)]
+                size: 30,
+                speed: 3,
+                direction: 'right',
+                powerMode: false
             };
-
-            amoebas.push(amoebaObj);
-            return amoebaObj;
         }
 
-        function createFood() {
-            for (let i = 0; i < 10; i++) {
-                const food = document.createElement('div');
-                food.className = 'food';
-                const size = 10;
-                const x = Math.random() * (gameArea.clientWidth - size);
-                const y = Math.random() * (gameArea.clientHeight - size);
-                food.style.left = `${x}px`;
-                food.style.top = `${y}px`;
-                food.style.width = `${size}px`;
-                food.style.height = `${size}px`;
-                gameArea.appendChild(food);
+        function createDots() {
+            const dotCount = 100 + (level - 1) * 20;
+            for (let i = 0; i < dotCount; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'dot';
+                const x = Math.random() * (gameArea.clientWidth - 6);
+                const y = Math.random() * (gameArea.clientHeight - 6);
+                dot.style.left = `${x}px`;
+                dot.style.top = `${y}px`;
+                gameArea.appendChild(dot);
 
-                const foodObj = { element: food, x, y, size };
-                foodParticles.push(foodObj);
+                dots.push({ element: dot, x, y, size: 6 });
+            }
+        }
+
+        function createPowerPellets() {
+            const pelletCount = 4;
+            for (let i = 0; i < pelletCount; i++) {
+                const pellet = document.createElement('div');
+                pellet.className = 'power-pellet';
+                const x = Math.random() * (gameArea.clientWidth - 12);
+                const y = Math.random() * (gameArea.clientHeight - 12);
+                pellet.style.left = `${x}px`;
+                pellet.style.top = `${y}px`;
+                gameArea.appendChild(pellet);
+
+                powerPellets.push({ element: pellet, x, y, size: 12 });
             }
         }
 
@@ -152,195 +212,321 @@
             const y = Math.random() * (gameArea.clientHeight - size);
             enemy.style.left = `${x}px`;
             enemy.style.top = `${y}px`;
-            enemy.style.width = `${size}px`;
-            enemy.style.height = `${size}px`;
             gameArea.appendChild(enemy);
 
-            const enemyObj = { element: enemy, x, y, size, speed: 2, direction: directions[Math.floor(Math.random() * directions.length)] };
-            enemies.push(enemyObj);
+            const type = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
+            enemy.style.backgroundColor = type.color;
+
+            return {
+                element: enemy,
+                x,
+                y,
+                size,
+                speed: type.speed,
+                direction: directions[Math.floor(Math.random() * directions.length)]
+            };
         }
 
-        function moveAmoebas() {
-            amoebas.forEach(amoeba => {
-                switch (amoeba.direction) {
-                    case 'up':
-                        amoeba.y -= amoeba.speed;
-                        break;
-                    case 'down':
-                        amoeba.y += amoeba.speed;
-                        break;
-                    case 'left':
-                        amoeba.x -= amoeba.speed;
-                        break;
-                    case 'right':
-                        amoeba.x += amoeba.speed;
-                        break;
-                }
+        function createPortals() {
+            for (let i = 0; i < 2; i++) {
+                const portal = document.createElement('div');
+                portal.className = 'portal';
+                const x = Math.random() * (gameArea.clientWidth - 30);
+                const y = Math.random() * (gameArea.clientHeight - 60);
+                portal.style.left = `${x}px`;
+                portal.style.top = `${y}px`;
+                gameArea.appendChild(portal);
 
-                if (amoeba.x < 0) amoeba.x = gameArea.clientWidth;
-                if (amoeba.x > gameArea.clientWidth) amoeba.x = 0;
-                if (amoeba.y < 0) amoeba.y = gameArea.clientHeight;
-                if (amoeba.y > gameArea.clientHeight) amoeba.y = 0;
+                portals.push({ element: portal, x, y, width: 30, height: 60 });
+            }
+        }
 
-                amoeba.element.style.left = `${amoeba.x}px`;
-                amoeba.element.style.top = `${amoeba.y}px`;
-            });
+        function createObstacles() {
+            const obstacleCount = 3 + Math.floor(level / 2);
+            for (let i = 0; i < obstacleCount; i++) {
+                const obstacle = document.createElement('div');
+                obstacle.className = 'obstacle';
+                const width = 30 + Math.random() * 70;
+                const height = 30 + Math.random() * 70;
+                const x = Math.random() * (gameArea.clientWidth - width);
+                const y = Math.random() * (gameArea.clientHeight - height);
+                obstacle.style.left = `${x}px`;
+                obstacle.style.top = `${y}px`;
+                obstacle.style.width = `${width}px`;
+                obstacle.style.height = `${height}px`;
+                gameArea.appendChild(obstacle);
+
+                obstacles.push({ element: obstacle, x, y, width, height });
+            }
+        }
+
+        function spawnFruit() {
+            const fruit = document.createElement('div');
+            fruit.className = 'fruit';
+            const size = 20;
+            const x = Math.random() * (gameArea.clientWidth - size);
+            const y = Math.random() * (gameArea.clientHeight - size);
+            fruit.style.left = `${x}px`;
+            fruit.style.top = `${y}px`;
+            fruit.textContent = fruitTypes[Math.floor(Math.random() * fruitTypes.length)];
+            gameArea.appendChild(fruit);
+
+            fruits.push({ element: fruit, x, y, size });
+
+            clearTimeout(fruitSpawnTimer);
+            fruitSpawnTimer = setTimeout(() => {
+                fruit.remove();
+                fruits = fruits.filter(f => f.element !== fruit);
+            }, 10000);
+        }
+
+        function movePlayer() {
+            let newX = player.x;
+            let newY = player.y;
+
+            switch (player.direction) {
+                case 'up':
+                    newY -= player.speed;
+                    break;
+                case 'down':
+                    newY += player.speed;
+                    break;
+                case 'left':
+                    newX -= player.speed;
+                    break;
+                case 'right':
+                    newX += player.speed;
+                    break;
+            }
+
+            if (!checkObstacleCollision(newX, newY, player.size, player.size)) {
+                player.x = newX;
+                player.y = newY;
+            }
+
+            if (player.x < 0) player.x = gameArea.clientWidth - player.size;
+            if (player.x > gameArea.clientWidth - player.size) player.x = 0;
+            if (player.y < 0) player.y = gameArea.clientHeight - player.size;
+            if (player.y > gameArea.clientHeight - player.size) player.y = 0;
+
+            player.element.style.left = `${player.x}px`;
+            player.element.style.top = `${player.y}px`;
+
+            checkPortalCollision();
         }
 
         function moveEnemies() {
             enemies.forEach(enemy => {
+                if (Math.random() < 0.05) {
+                    enemy.direction = directions[Math.floor(Math.random() * directions.length)];
+                }
+
+                let newX = enemy.x;
+                let newY = enemy.y;
+
                 switch (enemy.direction) {
                     case 'up':
-                        enemy.y -= enemy.speed;
+                        newY -= enemy.speed;
                         break;
                     case 'down':
-                        enemy.y += enemy.speed;
+                        newY += enemy.speed;
                         break;
                     case 'left':
-                        enemy.x -= enemy.speed;
+                        newX -= enemy.speed;
                         break;
                     case 'right':
-                        enemy.x += enemy.speed;
+                        newX += enemy.speed;
                         break;
                 }
 
-                if (enemy.x < 0) enemy.x = gameArea.clientWidth;
-                if (enemy.x > gameArea.clientWidth) enemy.x = 0;
-                if (enemy.y < 0) enemy.y = gameArea.clientHeight;
-                if (enemy.y > gameArea.clientHeight) enemy.y = 0;
+                if (!checkObstacleCollision(newX, newY, enemy.size, enemy.size)) {
+                    enemy.x = newX;
+                    enemy.y = newY;
+                } else {
+                    enemy.direction = directions[Math.floor(Math.random() * directions.length)];
+                }
+
+                if (enemy.x < 0) enemy.x = gameArea.clientWidth - enemy.size;
+                if (enemy.x > gameArea.clientWidth - enemy.size) enemy.x = 0;
+                if (enemy.y < 0) enemy.y = gameArea.clientHeight - enemy.size;
+                if (enemy.y > gameArea.clientHeight - enemy.size) enemy.y = 0;
 
                 enemy.element.style.left = `${enemy.x}px`;
                 enemy.element.style.top = `${enemy.y}px`;
             });
         }
 
-        function checkFoodCollisions() {
-            amoebas.forEach(amoeba => {
-                foodParticles.forEach((food, index) => {
-                    if (isColliding(amoeba, food)) {
-                        consumeFood(amoeba, food, index);
+        function checkCollisions() {
+            // Check dot collisions
+            dots.forEach((dot, index) => {
+                if (isColliding(player, dot)) {
+                    dot.element.remove();
+                    dots.splice(index, 1);
+                    score += 10;
+                    updateScore();
+                }
+            });
+
+            // Check power pellet collisions
+            powerPellets.forEach((pellet, index) => {
+                if (isColliding(player, pellet)) {
+                    pellet.element.remove();
+                    powerPellets.splice(index, 1);
+                    activatePowerMode();
+                }
+            });
+
+            // Check enemy collisions
+            enemies.forEach((enemy, index) => {
+                if (isColliding(player, enemy)) {
+                    if (player.powerMode) {
+                        enemy.element.remove();
+                        enemies.splice(index, 1);
+                        score += 200;
+                        updateScore();
+                        setTimeout(() => enemies.push(createEnemy()), 5000);
+                    } else {
+                        loseLife();
                     }
-                });
+                }
+            });
+
+            // Check fruit collisions
+            fruits.forEach((fruit, index) => {
+                if (isColliding(player, fruit)) {
+                    fruit.element.remove();
+                    fruits.splice(index, 1);
+                    score += 100;
+                    updateScore();
+                    clearTimeout(fruitSpawnTimer);
+                }
+            });
+        }
+
+        function checkObstacleCollision(x, y, width, height) {
+            return obstacles.some(obstacle => 
+                x < obstacle.x + obstacle.width &&
+                x + width > obstacle.x &&
+                y < obstacle.y + obstacle.height &&
+                y + height > obstacle.y
+            );
+        }
+
+        function checkPortalCollision() {
+            portals.forEach((portal, index) => {
+                if (isColliding(player, portal)) {
+                    const otherPortal = portals[1 - index];
+                    player.x = otherPortal.x;
+                    player.y = otherPortal.y + (otherPortal.height - player.size) / 2;
+                    player.element.style.left = `
+                                        player.x = otherPortal.x;
+                    player.y = otherPortal.y + (otherPortal.height - player.size) / 2;
+                    player.element.style.left = `${player.x}px`;
+                    player.element.style.top = `${player.y}px`;
+                }
             });
         }
 
         function isColliding(obj1, obj2) {
-            const dx = obj1.x + obj1.size / 2 - (obj2.x + obj2.size / 2);
-            const dy = obj1.y + obj1.size / 2 - (obj2.y + obj2.size / 2);
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            return distance < (obj1.size + obj2.size) / 2;
+            return !(
+                obj1.x + obj1.size <= obj2.x ||
+                obj1.x >= obj2.x + obj2.size ||
+                obj1.y + obj1.size <= obj2.y ||
+                obj1.y >= obj2.y + obj2.size
+            );
         }
 
-        function consumeFood(amoeba, food, foodIndex) {
-            food.element.remove();
-            foodParticles.splice(foodIndex, 1);
-            score += 10;
-            updateScore();
-        }
-
-        function checkEnemyCollisions() {
-            amoebas.forEach(amoeba => {
-                enemies.forEach(enemy => {
-                    if (isColliding(amoeba, enemy)) {
-                        loseLife();
-                    }
-                });
-            });
-        }
-
-        function loseLife() {
-            lives -= 1;
-            updateLives();
-            if (lives <= 0) {
-                endGame(false);
-            }
+        function activatePowerMode() {
+            player.powerMode = true;
+            clearTimeout(powerModeTimer);
+            powerModeTimer = setTimeout(() => {
+                player.powerMode = false;
+            }, 10000);
         }
 
         function updateScore() {
             scoreDisplay.textContent = `Score: ${score}`;
         }
 
-        function updateLives() {
+        function loseLife() {
+            lives--;
             livesDisplay.textContent = `Lives: ${lives}`;
-        }
-
-        function updateTime() {
-            gameTime -= 1;
-            const minutes = Math.floor(gameTime / 60);
-            const seconds = gameTime % 60;
-            timeDisplay.textContent = `Time: ${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-
-            if (gameTime <= 0) {
-                endGame(true);
+            if (lives === 0) {
+                gameOver();
+            } else {
+                respawnPlayer();
             }
         }
 
-        function endGame(playerWon) {
-            clearInterval(gameInterval);
-            gameOverScreen.style.display = 'block';
-            gameOverText.textContent = playerWon ? 'You Win!' : 'Game Over';
-            finalScoreDisplay.textContent = `Final Score: ${score}`;
+        function respawnPlayer() {
+            player.element.style.left = `${gameArea.clientWidth / 2}px`;
+            player.element.style.top = `${gameArea.clientHeight / 2}px`;
+            player.x = gameArea.clientWidth / 2;
+            player.y = gameArea.clientHeight / 2;
+            setTimeout(() => {
+                player.element.style.transition = 'none';
+            }, 100);
         }
 
-        function resetGame() {
-            gameArea.innerHTML = '';
-            amoebas = [];
-            foodParticles = [];
+        function gameOver() {
+            clearInterval(gameInterval);
+            clearTimeout(powerModeTimer);
+            clearTimeout(fruitSpawnTimer);
+            gameOverScreen.style.display = 'block';
+            finalScoreDisplay.textContent = `Final Score: ${score}`;
+            gameOverText.textContent = 'Game Over';
+        }
+
+        function restartGame() {
+            gameOverScreen.style.display = 'none';
+            player.element.remove();
+            dots.forEach(dot => dot.element.remove());
+            powerPellets.forEach(pellet => pellet.element.remove());
+            enemies.forEach(enemy => enemy.element.remove());
+            portals.forEach(portal => portal.element.remove());
+            obstacles.forEach(obstacle => obstacle.element.remove());
+            fruits.forEach(fruit => fruit.element.remove());
+
+            player = createPlayer(gameArea.clientWidth / 2, gameArea.clientHeight / 2);
+            dots = [];
+            powerPellets = [];
             enemies = [];
+            portals = [];
+            obstacles = [];
+            fruits = [];
             score = 0;
             lives = 3;
-            gameTime = 600; // 10 minutes
+            level = 1;
             updateScore();
-            updateLives();
-            gameOverScreen.style.display = 'none';
+            livesDisplay.textContent = `Lives: ${lives}`;
+            levelDisplay.textContent = `Level: ${level}`;
 
-            player = createAmoeba(
-                (gameArea.clientWidth - 40) / 2,
-                (gameArea.clientHeight - 40) / 2,
-                40,
-                '#00ff00'
-            );
-
-            for (let i = 0; i < 15; i++) {
-                createAmoeba(
-                    Math.random() * (gameArea.clientWidth - 50),
-                    Math.random() * (gameArea.clientHeight - 50),
-                    40,
-                    colors[Math.floor(Math.random() * colors.length)]
-                );
-            }
-
-            createFood();
-            createEnemy();
-
-            gameInterval = setInterval(() => {
-                moveAmoebas();
-                moveEnemies();
-                checkFoodCollisions();
-                checkEnemyCollisions();
-                updateTime();
-
-                if (Math.random() < 0.05) createFood();
-                if (Math.random() < 0.02) createEnemy();
-
-                if (gameTime % 20 === 0) {
-                    createAmoeba(
-                        Math.random() * (gameArea.clientWidth - 50),
-                        Math.random() * (gameArea.clientHeight - 50),
-                        40,
-                        colors[Math.floor(Math.random() * colors.length)]
-                    );
-                }
-
-                if (gameTime % 30 === 0) {
-                    createFood();
-                }
-            }, 1000);
+            startGame();
         }
 
-        restartButton.addEventListener('click', resetGame);
+        function startGame() {
+            createDots();
+            createPowerPellets();
+            createPortals();
+            createObstacles();
+            spawnFruit();
 
-        resetGame();
+            player = createPlayer(gameArea.clientWidth / 2, gameArea.clientHeight / 2);
+
+            for (let i = 0; i < 4; i++) {
+                enemies.push(createEnemy());
+            }
+
+            gameInterval = setInterval(() => {
+                movePlayer();
+                moveEnemies();
+                checkCollisions();
+            }, 1000 / 60);
+        }
+
+        restartButton.addEventListener('click', restartGame);
+
+        startGame();
     </script>
 </body>
 </html>
