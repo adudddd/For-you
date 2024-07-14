@@ -10,297 +10,335 @@
             overflow: hidden;
             background-color: #000;
             font-family: Arial, sans-serif;
-            color: #fff;
         }
         #game-area {
             position: relative;
-            width: 100vw;
-            height: 100vh;
+            width: 800px;
+            height: 600px;
+            margin: auto;
+            background-color: #000;
         }
-        .amoeba {
+        .amoeba, .enemy {
             position: absolute;
             border-radius: 50%;
-            cursor: pointer;
-            transition: transform 0.3s ease, background-color 0.3s ease;
-            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 70%);
-            box-shadow: 0 0 10px rgba(255,255,255,0.5);
+            transition: transform 0.3s ease;
+        }
+        .amoeba {
+            background-color: #00ff00;
+        }
+        .enemy {
+            background-color: #ff0000;
         }
         .food {
             position: absolute;
+            background-color: #ffff00;
             border-radius: 50%;
-            background-color: #00ff00;
-            box-shadow: 0 0 5px #00ff00;
+            width: 10px;
+            height: 10px;
         }
-        .predator {
-            position: absolute;
-            width: 30px;
-            height: 30px;
-            background-color: #ff0000;
-            clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
-            animation: rotate 2s linear infinite;
-        }
-        @keyframes rotate {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-        #reset-button, #score-display, #time-display {
+        #hud {
             position: absolute;
             top: 10px;
-            padding: 10px 20px;
-            background-color: rgba(76, 175, 80, 0.7);
-            color: white;
-            border: none;
-            border-radius: 5px;
-            font-size: 16px;
-        }
-        #reset-button {
-            right: 10px;
-            cursor: pointer;
-        }
-        #reset-button:hover {
-            background-color: rgba(69, 160, 73, 0.9);
-        }
-        #score-display {
             left: 10px;
-        }
-        #time-display {
-            left: 50%;
-            transform: translateX(-50%);
+            color: white;
+            padding: 10px;
+            z-index: 1;
         }
         #game-over {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 48px;
-            color: #ff0000;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
             display: none;
         }
-        .powerup {
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            background-color: #ff00ff;
+        #restart-button {
+            margin-top: 10px;
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
             border-radius: 5px;
-            animation: pulse 1s infinite alternate;
+            cursor: pointer;
         }
-        @keyframes pulse {
-            from { transform: scale(1); }
-            to { transform: scale(1.2); }
+        #restart-button:hover {
+            background-color: #45a049;
         }
     </style>
 </head>
 <body>
     <div id="game-area"></div>
-    <button id="reset-button">Reset Game</button>
-    <div id="score-display">Score: 0</div>
-    <div id="time-display">Time: 60</div>
-    <div id="game-over">GAME OVER</div>
-    <audio id="merge-sound" src="data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQwAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAACAAABhgC1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjU0AAAAAAAAAAAAAAAAJAYAAAAAAAAABYYPbGGhAAAA//tAwAAAB4QXj1BQAglxhCG/AAABMm93Z3Jdnf/Rgc6wKAhuF4KAgCAIA+D9YP//10HfWD/8H18H3/ghCAQBAEBg/8EAQB//BAEAQDBoGgaDf//+D74WOlTni1xOhJHRiIqTiZEYib//qpPnCWH9WpFgya1YxC1lpf/6kjZ0vUiotNKnHUymU7f/9avJpGIzkiUoaeo45J5UpS9v//sUj2Ik9Wq/W1p1esSfZUo6kyZIkn////2U6kYjMkydSSoiIzIzM//0RmSI//9ESZNlV6szjgiBER/zERERERERERERE=" preload="auto"></audio>
-    <audio id="split-sound" src="data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQwAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAACAAABhgC1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjU0AAAAAAAAAAAAAAAAJAQAAAAAAAAABYZhvWitAAAA//tAwAAAB3QfjXBQAAxoCDHOgAABS4dydhSfQi4uqFD+IWQ0g4UgquCDgx//9cHIOD9YOCg/B+sFAgCAYKBgoEAx///nPqAYLB//BBgEAQDBQIBAfwQBwP//9YIHA4CAIAgCAIAgCAKA4DgIBr///wfAoEAQBAIAgCAQBA//84nWZt1fX+lsEiYCkqPb1YGjcTx8ek0/////jKLwTE4a9YjTE3u8amIXieMRBGI//6Ypj8D4uDp/xE4njYqGolwbGIiP///0xn4XBeEomjUjcVDEwfOgwVC8VDUzGZn///9o+FwRheGIhjeNheLgyMxkZmZyHqTKQv//9MZHQXBKGIWg6Ng6NxgwEoXBcZjMzM//1GdBwFoYheFoNjcOjQUC8WCoYHDMZmZ////3KZ2HImC8NQ9G4ehiLRsJwxFoaj9zM//90yHIcheFoUhOD41GIrGQpFoaj///zZ/Mj0Iw1C0JwfGoxFYyFItDUf///4yPZHsdhWFoUg+Mw5GImFYvEQ5H////yf9IziULQnB8ZhyMRMKxeIhyP///+0j+JZeEIWg6LRQJBCIhGIBCFIaj////vJnlkwcBwEQSBAGwOA0BwFAMAgCAN///5JQcAgCgIAgCAIAgCAMAgCAIA3///lAEAQBAEAQBAEAQBAEAQBAG////KAIAAAA=" preload="auto"></audio>
-    <audio id="powerup-sound" src="data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQwAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAACAAABhgC1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjU0AAAAAAAAAAAAAAAAJAQAAAAAAAAABYZhvWitAAAA//tAwAAAB3QfjXBQAAxoCDHOgAABS4dydhSfQi4uqFD+IWQ0g4UgquCDgx//9cHIOD9YOCg/B+sFAgCAYKBgoEAx///nPqAYLB//BBgEAQDBQIBAfwQBwP//9YIHA4CAIAgCAIAgCAKA4DgIBr///wfAoEAQBAIAgCAQBA//84nWZt1fX+lsEiYCkqPb1YGjcTx8ek0/////jKLwTE4a9YjTE3u8amIXieMRBGI//6Ypj8D4uDp/xE4njYqGolwbGIiP///0xn4XBeEomjUjcVDEwfOgwVC8VDUzGZn///9o+FwRheGIhjeNheLgyMxkZmZyHqTKQv//9MZHQXBKGIWg6Ng6NxgwEoXBcZjMzM//1GdBwFoYheFoNjcOjQUC8WCoYHDMZmZ////3KZ2HImC8NQ9G4ehiLRsJwxFoaj9zM//90yHIcheFoUhOD41GIrGQpFoaj///zZ/Mj0Iw1C0JwfGoxFYyFItDUf///4yPZHsdhWFoUg+Mw5GImFYvEQ5H////yf9IziULQnB8ZhyMRMKxeIhyP///+0j+JZeEIWg6LRQJBCIhGIBCFIaj////vJnlkwcBwEQSBAGwOA0BwFAMAgCAN///5JQcAgCgIAgCAIAgCAMAgCAIA3///lAEAQBAEAQBAEAQBAEAQBAG////KAIAAAA=" preload="auto"></audio>
+    <div id="hud">
+        <div id="score">Score: 0</div>
+        <div id="lives">Lives: 3</div>
+    </div>
+    <div id="game-over">
+        <h2 id="game-over-text">Game Over</h2>
+        <p id="final-score"></p>
+        <button id="restart-button">Restart Game</button>
+    </div>
     <script>
         const gameArea = document.getElementById('game-area');
-        const resetButton = document.getElementById('reset-button');
-        const scoreDisplay = document.getElementById('score-display');
-        const timeDisplay = document.getElementById('time-display');
-        const gameOverDisplay = document.getElementById('game-over');
-        const mergeSound = document.getElementById('merge-sound');
-        const splitSound = document.getElementById('split-sound');
-        const powerupSound = document.getElementById('powerup-sound');
+        const scoreDisplay = document.getElementById('score');
+        const livesDisplay = document.getElementById('lives');
+        const gameOverScreen = document.getElementById('game-over');
+        const gameOverText = document.getElementById('game-over-text');
+        const finalScoreDisplay = document.getElementById('final-score');
+        const restartButton = document.getElementById('restart-button');
 
         let amoebas = [];
-        let foods = [];
-        let predators = [];
-        let powerups = [];
-        let gameInterval;
+        let foodParticles = [];
+        let enemies = [];
         let score = 0;
-        let timeLeft = 60;
+        let lives = 3;
+        let gameTime = 600; // 10 minutes in seconds
+        let gameInterval;
+        let player = null;
 
-        resetButton.addEventListener('click', resetGame);
+        const directions = ['up', 'down', 'left', 'right'];
+        const colors = ['#ff9999', '#99ff99', '#9999ff', '#ffff99', '#ff99ff', '#99ffff'];
 
-        function resetGame() {
-            clearInterval(gameInterval);
-            gameArea.innerHTML = '';
-            amoebas = [];
-            foods = [];
-            predators = [];
-            powerups = [];
-            score = 0;
-            timeLeft = 60;
-            scoreDisplay.textContent = 'Score: ' + score;
-            timeDisplay.textContent = 'Time: ' + timeLeft;
-            gameOverDisplay.style.display = 'none';
-            startGame();
-        }
-
-        function startGame() {
-            createAmoeba();
-            gameInterval = setInterval(gameLoop, 1000 / 60);
-            setInterval(() => {
-                if (timeLeft > 0) {
-                    timeLeft--;
-                    timeDisplay.textContent = 'Time: ' + timeLeft;
-                } else {
-                    endGame();
-                }
-            }, 1000);
-        }
-
-        function endGame() {
-            clearInterval(gameInterval);
-            gameOverDisplay.style.display = 'block';
-        }
-
-        function createAmoeba() {
+        function createAmoeba(x, y, size, color, speed = 2) {
             const amoeba = document.createElement('div');
-            amoeba.classList.add('amoeba');
-            amoeba.style.width = '50px';
-            amoeba.style.height = '50px';
-            amoeba.style.left = 'calc(50% - 25px)';
-            amoeba.style.top = 'calc(50% - 25px)';
-            amoeba.velocityX = Math.random() * 4 - 2;
-            amoeba.velocityY = Math.random() * 4 - 2;
-            amoeba.stage = 1;
-            amoeba.collisions = 0;
-            amoeba.addEventListener('click', () => splitAmoeba(amoeba));
+            amoeba.className = 'amoeba';
+            amoeba.style.left = `${x}px`;
+            amoeba.style.top = `${y}px`;
+            amoeba.style.width = `${size}px`;
+            amoeba.style.height = `${size}px`;
+            amoeba.style.backgroundColor = color;
             gameArea.appendChild(amoeba);
-            amoebas.push(amoeba);
-        }
 
-        function splitAmoeba(amoeba) {
-            if (parseInt(amoeba.style.width) > 50) {
-                const newSize = parseInt(amoeba.style.width) / 2;
-                amoeba.style.width = newSize + 'px';
-                amoeba.style.height = newSize + 'px';
+            const amoebaObj = {
+                element: amoeba,
+                x,
+                y,
+                size,
+                color,
+                speed,
+                direction: directions[Math.floor(Math.random() * directions.length)]
+            };
 
-                const newAmoeba = amoeba.cloneNode();
-                newAmoeba.style.width = newSize + 'px';
-                newAmoeba.style.height = newSize + 'px';
-                newAmoeba.velocityX = Math.random() * 4 - 2;
-                newAmoeba.velocityY = Math.random() * 4 - 2;
-                newAmoeba.addEventListener('click', () => splitAmoeba(newAmoeba));
-                gameArea.appendChild(newAmoeba);
-                amoebas.push(newAmoeba);
-
-                splitSound.play();
-            }
+            amoebas.push(amoebaObj);
+            return amoebaObj;
         }
 
         function createFood() {
-            const food = document.createElement('div');
-            food.classList.add('food');
-            food.style.width = '10px';
-            food.style.height = '10px';
-            food.style.left = Math.random() * (gameArea.clientWidth - 10) + 'px';
-            food.style.top = Math.random() * (gameArea.clientHeight - 10) + 'px';
-            gameArea.appendChild(food);
-            foods.push(food);
-        }
+            for (let i = 0; i < 10; i++) {
+                const food = document.createElement('div');
+                food.className = 'food';
+                const size = 10;
+                const x = Math.random() * (gameArea.clientWidth - size);
+                const y = Math.random() * (gameArea.clientHeight - size);
+                food.style.left = `${x}px`;
+                food.style.top = `${y}px`;
+                food.style.width = `${size}px`;
+                food.style.height = `${size}px`;
+                gameArea.appendChild(food);
 
-        function createPredator() {
-            const predator = document.createElement('div');
-            predator.classList.add('predator');
-            predator.style.left = Math.random() * (gameArea.clientWidth - 30) + 'px';
-            predator.style.top = Math.random() * (gameArea.clientHeight - 30) + 'px';
-            predator.velocityX = Math.random() * 4 - 2;
-            predator.velocityY = Math.random() * 4 - 2;
-            gameArea.appendChild(predator);
-            predators.push(predator);
-        }
-
-        function createPowerup() {
-            const powerup = document.createElement('div');
-            powerup.classList.add('powerup');
-            powerup.style.left = Math.random() * (gameArea.clientWidth - 20) + 'px';
-            powerup.style.top = Math.random() * (gameArea.clientHeight - 20) + 'px';
-            gameArea.appendChild(powerup);
-            powerups.push(powerup);
-        }
-
-        function gameLoop() {
-            amoebas.forEach(updateAmoeba);
-            predators.forEach(updatePredator);
-            foods.forEach(checkFoodCollision);
-            powerups.forEach(checkPowerupCollision);
-            checkPredatorCollision();
-            if (amoebas.length === 0) {
-                endGame();
+                const foodObj = { element: food, x, y, size };
+                foodParticles.push(foodObj);
             }
         }
 
-        function updateAmoeba(amoeba) {
-            amoeba.style.left = parseInt(amoeba.style.left) + amoeba.velocityX + 'px';
-            amoeba.style.top = parseInt(amoeba.style.top) + amoeba.velocityY + 'px';
-            if (parseInt(amoeba.style.left) <= 0 || parseInt(amoeba.style.left) >= gameArea.clientWidth - parseInt(amoeba.style.width)) {
-                amoeba.velocityX = -amoeba.velocityX;
-            }
-            if (parseInt(amoeba.style.top) <= 0 || parseInt(amoeba.style.top) >= gameArea.clientHeight - parseInt(amoeba.style.height)) {
-                amoeba.velocityY = -amoeba.velocityY;
-            }
+        function createEnemy() {
+            const enemy = document.createElement('div');
+            enemy.className = 'enemy';
+            const size = 30;
+            const x = Math.random() * (gameArea.clientWidth - size);
+            const y = Math.random() * (gameArea.clientHeight - size);
+            enemy.style.left = `${x}px`;
+            enemy.style.top = `${y}px`;
+            enemy.style.width = `${size}px`;
+            enemy.style.height = `${size}px`;
+            gameArea.appendChild(enemy);
+
+            const enemyObj = { element: enemy, x, y, size, speed: 2, direction: directions[Math.floor(Math.random() * directions.length)] };
+            enemies.push(enemyObj);
         }
 
-        function updatePredator(predator) {
-            predator.style.left = parseInt(predator.style.left) + predator.velocityX + 'px';
-            predator.style.top = parseInt(predator.style.top) + predator.velocityY + 'px';
-            if (parseInt(predator.style.left) <= 0 || parseInt(predator.style.left) >= gameArea.clientWidth - 30) {
-                predator.velocityX = -predator.velocityX;
-            }
-            if (parseInt(predator.style.top) <= 0 || parseInt(predator.style.top) >= gameArea.clientHeight - 30) {
-                predator.velocityY = -predator.velocityY;
-            }
-        }
-
-        function checkFoodCollision(food) {
+        function moveAmoebas() {
             amoebas.forEach(amoeba => {
-                if (isColliding(amoeba, food)) {
-                    gameArea.removeChild(food);
-                    foods.splice(foods.indexOf(food), 1);
-                    score++;
-                    scoreDisplay.textContent = 'Score: ' + score;
-                    amoeba.collisions++;
-                    evolveAmoeba(amoeba);
-                    mergeSound.play();
+                switch (amoeba.direction) {
+                    case 'up':
+                        amoeba.y -= amoeba.speed;
+                        break;
+                    case 'down':
+                        amoeba.y += amoeba.speed;
+                        break;
+                    case 'left':
+                        amoeba.x -= amoeba.speed;
+                        break;
+                    case 'right':
+                        amoeba.x += amoeba.speed;
+                        break;
                 }
+
+                if (amoeba.x < 0) amoeba.x = gameArea.clientWidth;
+                if (amoeba.x > gameArea.clientWidth) amoeba.x = 0;
+                if (amoeba.y < 0) amoeba.y = gameArea.clientHeight;
+                if (amoeba.y > gameArea.clientHeight) amoeba.y = 0;
+
+                amoeba.element.style.left = `${amoeba.x}px`;
+                amoeba.element.style.top = `${amoeba.y}px`;
             });
         }
 
-        function checkPredatorCollision() {
-            predators.forEach(predator => {
-                amoebas.forEach(amoeba => {
-                    if (isColliding(amoeba, predator)) {
-                        gameArea.removeChild(amoeba);
-                        amoebas.splice(amoebas.indexOf(amoeba), 1);
-                        score -= 5;
-                        scoreDisplay.textContent = 'Score: ' + score;
+        function moveEnemies() {
+            enemies.forEach(enemy => {
+                switch (enemy.direction) {
+                    case 'up':
+                        enemy.y -= enemy.speed;
+                        break;
+                    case 'down':
+                        enemy.y += enemy.speed;
+                        break;
+                    case 'left':
+                        enemy.x -= enemy.speed;
+                        break;
+                    case 'right':
+                        enemy.x += enemy.speed;
+                        break;
+                }
+
+                if (enemy.x < 0) enemy.x = gameArea.clientWidth;
+                if (enemy.x > gameArea.clientWidth) enemy.x = 0;
+                if (enemy.y < 0) enemy.y = gameArea.clientHeight;
+                if (enemy.y > gameArea.clientHeight) enemy.y = 0;
+
+                enemy.element.style.left = `${enemy.x}px`;
+                enemy.element.style.top = `${enemy.y}px`;
+            });
+        }
+
+        function checkFoodCollisions() {
+            amoebas.forEach(amoeba => {
+                foodParticles.forEach((food, index) => {
+                    if (isColliding(amoeba, food)) {
+                        consumeFood(amoeba, food, index);
                     }
                 });
             });
         }
 
-        function checkPowerupCollision(powerup) {
+        function isColliding(obj1, obj2) {
+            const dx = obj1.x + obj1.size / 2 - (obj2.x + obj2.size / 2);
+            const dy = obj1.y + obj1.size / 2 - (obj2.y + obj2.size / 2);
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            return distance < (obj1.size + obj2.size) / 2;
+        }
+
+        function consumeFood(amoeba, food, foodIndex) {
+            food.element.remove();
+            foodParticles.splice(foodIndex, 1);
+            score += 10;
+            updateScore();
+        }
+
+        function checkEnemyCollisions() {
             amoebas.forEach(amoeba => {
-                if (isColliding(amoeba, powerup)) {
-                    gameArea.removeChild(powerup);
-                    powerups.splice(powerups.indexOf(powerup), 1);
-                    amoeba.style.width = parseInt(amoeba.style.width) * 1.5 + 'px';
-                    amoeba.style.height = parseInt(amoeba.style.height) * 1.5 + 'px';
-                    powerupSound.play();
-                }
+                enemies.forEach(enemy => {
+                    if (isColliding(amoeba, enemy)) {
+                        loseLife();
+                    }
+                });
             });
         }
 
-        function evolveAmoeba(amoeba) {
-            const newSize = parseInt(amoeba.style.width) + 10;
-            amoeba.style.width = newSize + 'px';
-            amoeba.style.height = newSize + 'px';
+        function loseLife() {
+            lives -= 1;
+            updateLives();
+            if (lives <= 0) {
+                endGame(false);
+            }
         }
 
-        function isColliding(a, b) {
-            const aRect = a.getBoundingClientRect();
-            const bRect = b.getBoundingClientRect();
-            return !(aRect.top > bRect.bottom || aRect.bottom < bRect.top || aRect.right < bRect.left || aRect.left > bRect.right);
+        function updateScore() {
+            scoreDisplay.textContent = `Score: ${score}`;
         }
+
+        function updateLives() {
+            livesDisplay.textContent = `Lives: ${lives}`;
+        }
+
+        function updateTime() {
+            gameTime -= 1;
+            const minutes = Math.floor(gameTime / 60);
+            const seconds = gameTime % 60;
+            timeDisplay.textContent = `Time: ${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+
+            if (gameTime <= 0) {
+                endGame(true);
+            }
+        }
+
+        function endGame(playerWon) {
+            clearInterval(gameInterval);
+            gameOverScreen.style.display = 'block';
+            gameOverText.textContent = playerWon ? 'You Win!' : 'Game Over';
+            finalScoreDisplay.textContent = `Final Score: ${score}`;
+        }
+
+        function resetGame() {
+            gameArea.innerHTML = '';
+            amoebas = [];
+            foodParticles = [];
+            enemies = [];
+            score = 0;
+            lives = 3;
+            gameTime = 600; // 10 minutes
+            updateScore();
+            updateLives();
+            gameOverScreen.style.display = 'none';
+
+            player = createAmoeba(
+                (gameArea.clientWidth - 40) / 2,
+                (gameArea.clientHeight - 40) / 2,
+                40,
+                '#00ff00'
+            );
+
+            for (let i = 0; i < 15; i++) {
+                createAmoeba(
+                    Math.random() * (gameArea.clientWidth - 50),
+                    Math.random() * (gameArea.clientHeight - 50),
+                    40,
+                    colors[Math.floor(Math.random() * colors.length)]
+                );
+            }
+
+            createFood();
+            createEnemy();
+
+            gameInterval = setInterval(() => {
+                moveAmoebas();
+                moveEnemies();
+                checkFoodCollisions();
+                checkEnemyCollisions();
+                updateTime();
+
+                if (Math.random() < 0.05) createFood();
+                if (Math.random() < 0.02) createEnemy();
+
+                if (gameTime % 20 === 0) {
+                    createAmoeba(
+                        Math.random() * (gameArea.clientWidth - 50),
+                        Math.random() * (gameArea.clientHeight - 50),
+                        40,
+                        colors[Math.floor(Math.random() * colors.length)]
+                    );
+                }
+
+                if (gameTime % 30 === 0) {
+                    createFood();
+                }
+            }, 1000);
+        }
+
+        restartButton.addEventListener('click', resetGame);
 
         resetGame();
     </script>
