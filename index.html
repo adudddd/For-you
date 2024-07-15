@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game</title>
+    <title> Game</title>
     <style>
         body {
             margin: 0;
@@ -223,7 +223,7 @@
                 if (amoeba.powerUp) {
                     amoeba.powerUp.duration--;
                     if (amoeba.powerUp.duration <= 0) {
-                        if (amoeba.powerUp.type === 'speed') amoeba.speed /= 1.25;  // Reduced speed boost
+                        if (amoeba.powerUp.type === 'speed') amoeba.speed /= 1.5;  // Reduced speed boost
                         amoeba.element.style.boxShadow = '';
                         amoeba.powerUp = null;
                     }
@@ -368,37 +368,37 @@
             }
         }
 
-                function checkPowerUpCollisions() {
+        function checkPowerUpCollisions() {
             for (let i = amoebas.length - 1; i >= 0; i--) {
                 for (let j = powerUps.length - 1; j >= 0; j--) {
                     if (isColliding(amoebas[i], powerUps[j])) {
-                        activatePowerUp(amoebas[i], powerUps[j]);
-                        break;
+                        applyPowerUp(amoebas[i], powerUps[j]);
+                          break;
                     }
                 }
             }
         }
 
         function consumeFood(amoeba, food) {
-            score += 10;
-            scoreDisplay.textContent = `Score: ${score}`;
+            amoeba.size += 2;
+            amoeba.element.style.width = `${amoeba.size}px`;
+            amoeba.element.style.height = `${amoeba.size}px`;
             food.element.remove();
             foodParticles.splice(foodParticles.indexOf(food), 1);
-            evolveAmoeba(amoeba);
+            updateScore(1);
         }
 
-        function activatePowerUp(amoeba, powerUp) {
+        function applyPowerUp(amoeba, powerUp) {
             if (powerUp.type === 'speed') {
-                amoeba.speed *= 1.25; // Increase speed
-                amoeba.powerUp = { type: 'speed', duration: 300 }; // 5 seconds
-                powerUp.element.remove();
-                powerUps.splice(powerUps.indexOf(powerUp), 1);
+                amoeba.speed *= 1.5;  // Reduced speed boost
+                amoeba.element.style.boxShadow = '0 0 10px #ffff00';
             } else if (powerUp.type === 'invincibility') {
-                amoeba.powerUp = { type: 'invincibility', duration: 300 }; // 5 seconds
-                powerUp.element.remove();
-                powerUps.splice(powerUps.indexOf(powerUp), 1);
+                amoeba.element.style.boxShadow = '0 0 10px #00ffff';
             }
-            updateScore(20); // Bonus for collecting a power-up
+            amoeba.powerUp = { type: powerUp.type, duration: 300 };  // 5 seconds at 60 fps
+            powerUp.element.remove();
+            powerUps.splice(powerUps.indexOf(powerUp), 1);
+            updateScore(5);
         }
 
         function updateScore(points) {
@@ -412,12 +412,37 @@
             checkCollisions();
             checkFoodCollisions();
             checkPowerUpCollisions();
-            if (Math.random() < 0.02) createFood(); // Randomly create food
-            if (Math.random() < 0.01) createPowerUp(); // Randomly create power-ups
+
+            if (Math.random() < 0.02) createFood();
+            if (Math.random() < 0.005) createPowerUp();
+            if (Math.random() < 0.001) createCleaner();
+
             requestAnimationFrame(gameLoop);
         }
 
-        // Start the game
+        function resetGame() {
+            amoebas.forEach(amoeba => amoeba.element.remove());
+            amoebas.length = 0;
+            foodParticles.forEach(food => food.element.remove());
+            foodParticles.length = 0;
+            powerUps.forEach(powerUp => powerUp.element.remove());
+            powerUps.length = 0;
+            removeCleaner();
+            score = 0;
+            updateScore(0);
+
+            for (let i = 0; i < 5; i++) {
+                createAmoeba(
+                    Math.random() * gameArea.clientWidth,
+                    Math.random() * gameArea.clientHeight,
+                    30
+                );
+            }
+        }
+
+        document.getElementById('reset-button').addEventListener('click', resetGame);
+
+        resetGame();
         gameLoop();
     </script>
 </body>
