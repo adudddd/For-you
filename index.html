@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> Game</title>
+    <title>Game</title>
     <style>
         body {
             margin: 0;
@@ -84,12 +84,6 @@
             { color: '#cc0000', size: 1.4 }
         ];
 
-        let cleanerInterval = 0;
-        const CLEANER_INTERVAL_MAX = 1800; // 30 seconds at 60 fps
-        const CLEANER_DURATION = 300; // 5 seconds at 60 fps
-        const CLEANER_PARTICLE_LIMIT = 10; // Max particles cleaner can clear
-        let cleanerParticleCount = 0;
-
         function createAmoeba(x, y, size, speed = 1, stage = 0) {
             const amoeba = document.createElement('div');
             amoeba.className = 'amoeba';
@@ -144,8 +138,7 @@
                 vy: (Math.random() - 0.5) * 4
             };
 
-            cleanerTimer = CLEANER_DURATION;
-            cleanerParticleCount = 0; // Reset particle count
+            cleanerTimer = 300; // 5 seconds at 60 fps
         }
 
         function removeCleaner() {
@@ -208,28 +201,15 @@
                 amoeba.x += amoeba.vx;
                 amoeba.y += amoeba.vy;
 
-                if (amoeba.x < 0) {
-                    amoeba.x = 0;
-                    amoeba.vx *= -1;
-                } else if (amoeba.x + amoeba.size > gameArea.clientWidth) {
-                    amoeba.x = gameArea.clientWidth - amoeba.size;
-                    amoeba.vx *= -1;
-                }
-
-                if (amoeba.y < 0) {
-                    amoeba.y = 0;
-                    amoeba.vy *= -1;
-                } else if (amoeba.y + amoeba.size > gameArea.clientHeight) {
-                    amoeba.y = gameArea.clientHeight - amoeba.size;
-                    amoeba.vy *= -1;
-                }
+                if (amoeba.x < 0 || amoeba.x > gameArea.clientWidth - amoeba.size) amoeba.vx *= -1;
+                if (amoeba.y < 0 || amoeba.y > gameArea.clientHeight - amoeba.size) amoeba.vy *= -1;
 
                 updatePosition(amoeba);
 
                 if (amoeba.powerUp) {
                     amoeba.powerUp.duration--;
                     if (amoeba.powerUp.duration <= 0) {
-                        if (amoeba.powerUp.type === 'speed') amoeba.speed /= 1.25;  // Reduced speed boost
+                        if (amoeba.powerUp.type === 'speed') amoeba.speed /= 2;
                         amoeba.element.style.boxShadow = '';
                         amoeba.powerUp = null;
                     }
@@ -252,56 +232,42 @@
             cleaner.x += cleaner.vx;
             cleaner.y += cleaner.vy;
 
-            if (cleaner.x < 0) {
-                cleaner.x = 0;
-                cleaner.vx *= -1;
-            } else if (cleaner.x + cleaner.size > gameArea.clientWidth) {
-                cleaner.x = gameArea.clientWidth - cleaner.size;
-                cleaner.vx *= -1;
-            }
-
-            if (cleaner.y < 0) {
-                cleaner.y = 0;
-                cleaner.vy *= -1;
-            } else if (cleaner.y + cleaner.size > gameArea.clientHeight) {
-                cleaner.y = gameArea.clientHeight - cleaner.size;
-                cleaner.vy *= -1;
-            }
+            if (cleaner.x < 0 || cleaner.x > gameArea.clientWidth - cleaner.size) cleaner.vx *= -1;
+            if (cleaner.y < 0 || cleaner.y > gameArea.clientHeight - cleaner.size) cleaner.vy *= -1;
 
             updatePosition(cleaner);
 
             cleanerTimer--;
-            if (cleanerTimer <= 0 || cleanerParticleCount >= CLEANER_PARTICLE_LIMIT) {
+            if (cleanerTimer <= 0) {
                 removeCleaner();
             }
         }
 
-        function findNearestAmoeba(cleaner) {
-            let nearest = null;
-            let nearestDistance = Infinity;
+        function findNearestAmoeba(obj) {
+            let nearestAmoeba = null;
+            let minDistance = Infinity;
 
             amoebas.forEach(amoeba => {
-                const dx = amoeba.x - cleaner.x;
-                const dy = amoeba.y - cleaner.y;
+                const dx = amoeba.x - obj.x;
+                const dy = amoeba.y - obj.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
-                if (distance < nearestDistance) {
-                    nearestDistance = distance;
-                    nearest = amoeba;
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    nearestAmoeba = amoeba;
                 }
             });
 
-            return nearest;
+            return nearestAmoeba;
         }
 
         function checkCollisions() {
-            amoebas.forEach((amoeba1, i) => {
+            for (let i = 0; i < amoebas.length; i++) {
                 for (let j = i + 1; j < amoebas.length; j++) {
-                    const amoeba2 = amoebas[j];
-                    if (isColliding(amoeba1, amoeba2)) {
-                        handleAmoebaCollision(amoeba1, amoeba2);
+                    if (isColliding(amoebas[i], amoebas[j])) {
+                        handleCollision(amoebas[i], amoebas[j]);
                     }
                 }
-            });
+            }
 
             if (cleaner) {
                 for (let i = amoebas.length - 1; i >= 0; i--) {
@@ -310,55 +276,10 @@
                             amoebas[i].element.remove();
                             amoebas.splice(i, 1);
                             updateScore(-20);
-                            cleanerParticleCount++; // Increment particle count
                         }
-                    }
-                }
-
-                for (let i = foodParticles.length - 1; i >= 0; i--) {
-                    if (isColliding(foodParticles[i], cleaner)) {
-                        foodParticles[i].element.remove();
-                        foodParticles.splice(i, 1);
-                        cleanerParticleCount++; // Increment particle count
                     }
                 }
             }
-        }
-
-        function checkFoodCollisions() {
-            amoebas.forEach(amoeba => {
-                for (let i = foodParticles.length - 1; i >= 0; i--) {
-                    if (isColliding(amoeba, foodParticles[i])) {
-                        foodParticles[i].element.remove();
-                        foodParticles.splice(i, 1);
-
-                        amoeba.size += 2;
-                        amoeba.collisions++;
-                        updateAmoeba(amoeba);
-                        updateScore(10);
-                    }
-                }
-            });
-        }
-
-        function checkPowerUpCollisions() {
-            amoebas.forEach(amoeba => {
-                for (let i = powerUps.length - 1; i >= 0; i--) {
-                    if (isColliding(amoeba, powerUps[i])) {
-                        powerUps[i].element.remove();
-                        powerUps.splice(i, 1);
-
-                        if (!amoeba.powerUp) {
-                            amoeba.powerUp = {
-                                type: powerUps[i].type,
-                                duration: 600 // Duration of power-up effect in frames (10 seconds)
-                            };
-                            if (amoeba.powerUp.type === 'speed') amoeba.speed *= 1.25;  // Slightly reduced speed boost
-                            amoeba.element.style.boxShadow = '0 0 10px #ffffff';
-                        }
-                    }
-                }
-            });
         }
 
         function isColliding(obj1, obj2) {
@@ -368,101 +289,141 @@
             return distance < (obj1.size + obj2.size) / 2;
         }
 
-        function handleAmoebaCollision(amoeba1, amoeba2) {
-            if (!amoeba1.powerUp || amoeba1.powerUp.type !== 'invincibility') {
-                amoeba1.size += 1;
-                amoeba1.collisions++;
-            }
+        function handleCollision(amoeba1, amoeba2) {
+            amoeba1.collisions++;
+            amoeba2.collisions++;
 
-            if (!amoeba2.powerUp || amoeba2.powerUp.type !== 'invincibility') {
-                amoeba2.size += 1;
-                amoeba2.collisions++;
-            }
+            if (amoeba1.collisions >= 3) evolveAmoeba(amoeba1);
+            if (amoeba2.collisions >= 3) evolveAmoeba(amoeba2);
 
-            const tempVx = amoeba1.vx;
-            const tempVy = amoeba1.vy;
-            amoeba1.vx = amoeba2.vx;
-            amoeba1.vy = amoeba2.vy;
-            amoeba2.vx = tempVx;
-            amoeba2.vy = tempVy;
-
-            updateAmoeba(amoeba1);
-            updateAmoeba(amoeba2);
-
-            if (amoeba1.collisions >= 5) evolveAmoeba(amoeba1);
-            if (amoeba2.collisions >= 5) evolveAmoeba(amoeba2);
+            amoeba1.vx *= -1;
+            amoeba1.vy *= -1;
+            amoeba2.vx *= -1;
+            amoeba2.vy *= -1;
         }
 
         function evolveAmoeba(amoeba) {
-            amoeba.collisions = 0;
-            amoeba.stage++;
-            amoeba.stage = Math.min(amoeba.stage, evolutionStages.length - 1);
-            updateAmoeba(amoeba);
-        }
-
-        function updateAmoeba(amoeba) {
-            amoeba.element.style.width = `${amoeba.size}px`;
-            amoeba.element.style.height = `${amoeba.size}px`;
-            amoeba.element.style.backgroundColor = evolutionStages[amoeba.stage].color;
+            if (amoeba.stage < evolutionStages.length - 1) {
+                amoeba.stage++;
+                amoeba.element.style.backgroundColor = evolutionStages[amoeba.stage].color;
+                amoeba.size *= evolutionStages[amoeba.stage].size;
+                amoeba.element.style.width = `${amoeba.size}px`;
+                amoeba.element.style.height = `${amoeba.size}px`;
+                amoeba.collisions = 0;
+                updateScore(10);
+            }
         }
 
         function popAmoeba(amoeba) {
-            amoeba.element.remove();
-            amoebas.splice(amoebas.indexOf(amoeba), 1);
-            updateScore(-20);
+            if (amoeba.size > 20) {
+                const newSize = amoeba.size / 2;
+                const newSpeed = amoeba.speed * 1.2;
+                
+                createAmoeba(amoeba.x, amoeba.y, newSize, newSpeed, amoeba.stage);
+                createAmoeba(amoeba.x + newSize, amoeba.y, newSize, newSpeed, amoeba.stage);
+                
+                amoeba.element.remove();
+                amoebas.splice(amoebas.indexOf(amoeba), 1);
+                
+                updateScore(5);
+            }
         }
 
-        function updateScore(change) {
-            score += change;
+        function checkFoodCollisions() {
+            for (let i = amoebas.length - 1; i >= 0; i--) {
+                for (let j = foodParticles.length - 1; j >= 0; j--) {
+                    if (isColliding(amoebas[i], foodParticles[j])) {
+                        consumeFood(amoebas[i], foodParticles[j]);
+                        break;
+                    }
+                }
+            }
+        }
+
+        function checkPowerUpCollisions() {
+            for (let i = amoebas.length - 1; i >= 0; i--) {
+                for (let j = powerUps.length - 1; j >= 0; j--) {
+                    if (isColliding(amoebas[i], powerUps[j])) {
+                        applyPowerUp(amoebas[i], powerUps[j]);
+                        break;
+                    }
+                }
+            }
+        }
+
+        function consumeFood(amoeba, food) {
+            amoeba.size += 5;
+            amoeba.element.style.width = `${amoeba.size}px`;
+            amoeba.element.style.height = `${amoeba.size}px`;
+            food.element.remove();
+            foodParticles.splice(foodParticles.indexOf(food), 1);
+            updateScore(1);
+        }
+
+        function applyPowerUp(amoeba, powerUp) {
+            amoeba.powerUp = {
+                type: powerUp.type,
+                duration: 300 // 5 seconds at 60 fps
+            };
+
+            if (powerUp.type === 'speed') {
+                amoeba.speed *= 2;
+                amoeba.element.style.boxShadow = '0 0 10px #ffff00';
+            } else if (powerUp.type === 'invincibility') {
+                amoeba.element.style.boxShadow = '0 0 10px #00ffff';
+            }
+
+            powerUp.element.remove();
+            powerUps.splice(powerUps.indexOf(powerUp), 1);
+            updateScore(5);
+        }
+
+        function updateScore(points) {
+            score += points;
             scoreDisplay.textContent = `Score: ${score}`;
         }
 
         function resetGame() {
-            amoebas.forEach(amoeba => amoeba.element.remove());
+            gameArea.innerHTML = '';
             amoebas.length = 0;
-            foodParticles.forEach(food => food.element.remove());
-            foodParticles.length = 0;
-            powerUps.forEach(powerUp => powerUp.element.remove());
-            powerUps.length = 0;
             removeCleaner();
+            foodParticles.length = 0;
+            powerUps.length = 0;
             score = 0;
             updateScore(0);
 
-            cleanerInterval = 0;
-            cleanerParticleCount = 0;
-
-            for (let i = 0; i < 5; i++) {
+            for (let i = 0; i < 10; i++) {
                 createAmoeba(
-                    Math.random() * gameArea.clientWidth,
-                    Math.random() * gameArea.clientHeight,
-                    30
+                    Math.random() * (gameArea.clientWidth - 50),
+                    Math.random() * (gameArea.clientHeight - 50),
+                    50
                 );
             }
         }
 
         document.getElementById('reset-button').addEventListener('click', resetGame);
 
+        resetGame();
+
         function gameLoop() {
             moveAmoebas();
-            moveCleaner();
+            if (cleaner) {
+                moveCleaner();
+            } else if (amoebas.length > 15) {
+                createCleaner();
+            }
             checkCollisions();
             checkFoodCollisions();
             checkPowerUpCollisions();
 
-            if (Math.random() < 0.02) createFood();
-            if (Math.random() < 0.005) createPowerUp();
-
-            cleanerInterval++;
-            if (cleanerInterval >= CLEANER_INTERVAL_MAX || amoebas.length > 20) { // Example threshold for too many amoebas
-                createCleaner();
-                cleanerInterval = 0;
-            }
+            if (Math.random() < 0.05) createFood();
+            if (Math.random() < 0.01) createPowerUp();
 
             requestAnimationFrame(gameLoop);
         }
 
-        resetGame();
-        requestAnimationFrame(gameLoop);
+        gameLoop();
     </script>
 </body>
 </html>
+                
