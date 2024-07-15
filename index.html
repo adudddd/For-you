@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enhanced Amoeba Game</title>
+    <title>Game</title>
     <style>
         body {
             margin: 0;
@@ -16,7 +16,7 @@
             width: 100vw;
             height: 100vh;
         }
-        .amoeba, .predator {
+        .amoeba, .cleaner {
             position: absolute;
             border-radius: 50%;
             cursor: pointer;
@@ -25,7 +25,7 @@
         .amoeba {
             background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 70%);
         }
-        .predator {
+        .cleaner {
             background-color: #800080;
             box-shadow: 0 0 10px #ff00ff;
         }
@@ -70,7 +70,8 @@
         const gameArea = document.getElementById('game-area');
         const scoreDisplay = document.getElementById('score-display');
         const amoebas = [];
-        const predators = [];
+        let cleaner = null;
+        let cleanerTimer = 0;
         const foodParticles = [];
         const powerUps = [];
         let score = 0;
@@ -113,17 +114,23 @@
             return amoebaObj;
         }
 
-        function createPredator(x, y, size) {
-            const predator = document.createElement('div');
-            predator.className = 'predator';
-            predator.style.left = `${x}px`;
-            predator.style.top = `${y}px`;
-            predator.style.width = `${size}px`;
-            predator.style.height = `${size}px`;
-            gameArea.appendChild(predator);
+        function createCleaner() {
+            if (cleaner) return;
 
-            const predatorObj = {
-                element: predator,
+            const size = 60;
+            const x = Math.random() * (gameArea.clientWidth - size);
+            const y = Math.random() * (gameArea.clientHeight - size);
+
+            const cleanerElement = document.createElement('div');
+            cleanerElement.className = 'cleaner';
+            cleanerElement.style.left = `${x}px`;
+            cleanerElement.style.top = `${y}px`;
+            cleanerElement.style.width = `${size}px`;
+            cleanerElement.style.height = `${size}px`;
+            gameArea.appendChild(cleanerElement);
+
+            cleaner = {
+                element: cleanerElement,
                 x,
                 y,
                 size,
@@ -131,8 +138,14 @@
                 vy: (Math.random() - 0.5) * 4
             };
 
-            predators.push(predatorObj);
-            return predatorObj;
+            cleanerTimer = 300; // 5 seconds at 60 fps
+        }
+
+        function removeCleaner() {
+            if (cleaner) {
+                cleaner.element.remove();
+                cleaner = null;
+            }
         }
 
         function createFood() {
@@ -204,34 +217,39 @@
             });
         }
 
-        function movePredators() {
-            predators.forEach(predator => {
-                const nearestAmoeba = findNearestAmoeba(predator);
-                if (nearestAmoeba) {
-                    const dx = nearestAmoeba.x - predator.x;
-                    const dy = nearestAmoeba.y - predator.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    predator.vx = (dx / distance) * 2;
-                    predator.vy = (dy / distance) * 2;
-                }
+        function moveCleaner() {
+            if (!cleaner) return;
 
-                predator.x += predator.vx;
-                predator.y += predator.vy;
+            const nearestAmoeba = findNearestAmoeba(cleaner);
+            if (nearestAmoeba) {
+                const dx = nearestAmoeba.x - cleaner.x;
+                const dy = nearestAmoeba.y - cleaner.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                cleaner.vx = (dx / distance) * 2;
+                cleaner.vy = (dy / distance) * 2;
+            }
 
-                if (predator.x < 0 || predator.x > gameArea.clientWidth - predator.size) predator.vx *= -1;
-                if (predator.y < 0 || predator.y > gameArea.clientHeight - predator.size) predator.vy *= -1;
+            cleaner.x += cleaner.vx;
+            cleaner.y += cleaner.vy;
 
-                updatePosition(predator);
-            });
+            if (cleaner.x < 0 || cleaner.x > gameArea.clientWidth - cleaner.size) cleaner.vx *= -1;
+            if (cleaner.y < 0 || cleaner.y > gameArea.clientHeight - cleaner.size) cleaner.vy *= -1;
+
+            updatePosition(cleaner);
+
+            cleanerTimer--;
+            if (cleanerTimer <= 0) {
+                removeCleaner();
+            }
         }
 
-        function findNearestAmoeba(predator) {
+        function findNearestAmoeba(obj) {
             let nearestAmoeba = null;
             let minDistance = Infinity;
 
             amoebas.forEach(amoeba => {
-                const dx = amoeba.x - predator.x;
-                const dy = amoeba.y - predator.y;
+                const dx = amoeba.x - obj.x;
+                const dy = amoeba.y - obj.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
                 if (distance < minDistance) {
                     minDistance = distance;
@@ -251,14 +269,13 @@
                 }
             }
 
-            for (let i = amoebas.length - 1; i >= 0; i--) {
-                for (let j = predators.length - 1; j >= 0; j--) {
-                    if (isColliding(amoebas[i], predators[j])) {
+            if (cleaner) {
+                for (let i = amoebas.length - 1; i >= 0; i--) {
+                    if (isColliding(amoebas[i], cleaner)) {
                         if (!amoebas[i].powerUp || amoebas[i].powerUp.type !== 'invincibility') {
                             amoebas[i].element.remove();
                             amoebas.splice(i, 1);
                             updateScore(-20);
-                            break;
                         }
                     }
                 }
@@ -341,16 +358,17 @@
             food.element.remove();
             foodParticles.splice(foodParticles.indexOf(food), 1);
             updateScore(1);
-            }
+        }
 
         function applyPowerUp(amoeba, powerUp) {
             amoeba.powerUp = {
                 type: powerUp.type,
-                duration: 300 // 15 seconds at 20 fps
+                duration: 300 // 5 seconds at 60 fps
             };
 
             if (powerUp.type === 'speed') {
                 amoeba.speed *= 2;
+                amoeba.element
                 amoeba.element.style.boxShadow = '0 0 10px #ffff00';
             } else if (powerUp.type === 'invincibility') {
                 amoeba.element.style.boxShadow = '0 0 10px #00ffff';
@@ -369,7 +387,7 @@
         function resetGame() {
             gameArea.innerHTML = '';
             amoebas.length = 0;
-            predators.length = 0;
+            removeCleaner();
             foodParticles.length = 0;
             powerUps.length = 0;
             score = 0;
@@ -382,14 +400,6 @@
                     50
                 );
             }
-
-            for (let i = 0; i < 3; i++) {
-                createPredator(
-                    Math.random() * (gameArea.clientWidth - 60),
-                    Math.random() * (gameArea.clientHeight - 60),
-                    60
-                );
-            }
         }
 
         document.getElementById('reset-button').addEventListener('click', resetGame);
@@ -398,7 +408,11 @@
 
         function gameLoop() {
             moveAmoebas();
-            movePredators();
+            if (cleaner) {
+                moveCleaner();
+            } else if (amoebas.length > 15) {
+                createCleaner();
+            }
             checkCollisions();
             checkFoodCollisions();
             checkPowerUpCollisions();
