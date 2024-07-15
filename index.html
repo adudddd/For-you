@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game</title>
+    <title>Enhanced Amoeba Game</title>
     <style>
         body {
             margin: 0;
@@ -201,15 +201,29 @@
                 amoeba.x += amoeba.vx;
                 amoeba.y += amoeba.vy;
 
-                if (amoeba.x < 0 || amoeba.x > gameArea.clientWidth - amoeba.size) amoeba.vx *= -1;
-                if (amoeba.y < 0 || amoeba.y > gameArea.clientHeight - amoeba.size) amoeba.vy *= -1;
+                // Improved bouncing off the screen edges
+                if (amoeba.x < 0) {
+                    amoeba.x = 0;
+                    amoeba.vx *= -1;
+                } else if (amoeba.x + amoeba.size > gameArea.clientWidth) {
+                    amoeba.x = gameArea.clientWidth - amoeba.size;
+                    amoeba.vx *= -1;
+                }
+
+                if (amoeba.y < 0) {
+                    amoeba.y = 0;
+                    amoeba.vy *= -1;
+                } else if (amoeba.y + amoeba.size > gameArea.clientHeight) {
+                    amoeba.y = gameArea.clientHeight - amoeba.size;
+                    amoeba.vy *= -1;
+                }
 
                 updatePosition(amoeba);
 
                 if (amoeba.powerUp) {
                     amoeba.powerUp.duration--;
                     if (amoeba.powerUp.duration <= 0) {
-                        if (amoeba.powerUp.type === 'speed') amoeba.speed /= 2;
+                        if (amoeba.powerUp.type === 'speed') amoeba.speed /= 1.25;  // Reduced speed boost
                         amoeba.element.style.boxShadow = '';
                         amoeba.powerUp = null;
                     }
@@ -232,8 +246,22 @@
             cleaner.x += cleaner.vx;
             cleaner.y += cleaner.vy;
 
-            if (cleaner.x < 0 || cleaner.x > gameArea.clientWidth - cleaner.size) cleaner.vx *= -1;
-            if (cleaner.y < 0 || cleaner.y > gameArea.clientHeight - cleaner.size) cleaner.vy *= -1;
+            // Improved bouncing for the cleaner
+            if (cleaner.x < 0) {
+                cleaner.x = 0;
+                cleaner.vx *= -1;
+            } else if (cleaner.x + cleaner.size > gameArea.clientWidth) {
+                cleaner.x = gameArea.clientWidth - cleaner.size;
+                cleaner.vx *= -1;
+            }
+
+            if (cleaner.y < 0) {
+                cleaner.y = 0;
+                cleaner.vy *= -1;
+            } else if (cleaner.y + cleaner.size > gameArea.clientHeight) {
+                cleaner.y = gameArea.clientHeight - cleaner.size;
+                cleaner.vy *= -1;
+            }
 
             updatePosition(cleaner);
 
@@ -340,11 +368,11 @@
             }
         }
 
-        function checkPowerUpCollisions() {
+                function checkPowerUpCollisions() {
             for (let i = amoebas.length - 1; i >= 0; i--) {
                 for (let j = powerUps.length - 1; j >= 0; j--) {
                     if (isColliding(amoebas[i], powerUps[j])) {
-                        applyPowerUp(amoebas[i], powerUps[j]);
+                        activatePowerUp(amoebas[i], powerUps[j]);
                         break;
                     }
                 }
@@ -352,31 +380,25 @@
         }
 
         function consumeFood(amoeba, food) {
-            amoeba.size += 5;
-            amoeba.element.style.width = `${amoeba.size}px`;
-            amoeba.element.style.height = `${amoeba.size}px`;
+            score += 10;
+            scoreDisplay.textContent = `Score: ${score}`;
             food.element.remove();
             foodParticles.splice(foodParticles.indexOf(food), 1);
-            updateScore(1);
+            evolveAmoeba(amoeba);
         }
 
-        function applyPowerUp(amoeba, powerUp) {
-            amoeba.powerUp = {
-                type: powerUp.type,
-                duration: 300 // 5 seconds at 60 fps
-            };
-
+        function activatePowerUp(amoeba, powerUp) {
             if (powerUp.type === 'speed') {
-                amoeba.speed *= 2;
-                amoeba.element
-                amoeba.element.style.boxShadow = '0 0 10px #ffff00';
+                amoeba.speed *= 1.25; // Increase speed
+                amoeba.powerUp = { type: 'speed', duration: 300 }; // 5 seconds
+                powerUp.element.remove();
+                powerUps.splice(powerUps.indexOf(powerUp), 1);
             } else if (powerUp.type === 'invincibility') {
-                amoeba.element.style.boxShadow = '0 0 10px #00ffff';
+                amoeba.powerUp = { type: 'invincibility', duration: 300 }; // 5 seconds
+                powerUp.element.remove();
+                powerUps.splice(powerUps.indexOf(powerUp), 1);
             }
-
-            powerUp.element.remove();
-            powerUps.splice(powerUps.indexOf(powerUp), 1);
-            updateScore(5);
+            updateScore(20); // Bonus for collecting a power-up
         }
 
         function updateScore(points) {
@@ -384,45 +406,18 @@
             scoreDisplay.textContent = `Score: ${score}`;
         }
 
-        function resetGame() {
-            gameArea.innerHTML = '';
-            amoebas.length = 0;
-            removeCleaner();
-            foodParticles.length = 0;
-            powerUps.length = 0;
-            score = 0;
-            updateScore(0);
-
-            for (let i = 0; i < 10; i++) {
-                createAmoeba(
-                    Math.random() * (gameArea.clientWidth - 50),
-                    Math.random() * (gameArea.clientHeight - 50),
-                    50
-                );
-            }
-        }
-
-        document.getElementById('reset-button').addEventListener('click', resetGame);
-
-        resetGame();
-
         function gameLoop() {
             moveAmoebas();
-            if (cleaner) {
-                moveCleaner();
-            } else if (amoebas.length > 15) {
-                createCleaner();
-            }
+            moveCleaner();
             checkCollisions();
             checkFoodCollisions();
             checkPowerUpCollisions();
-
-            if (Math.random() < 0.05) createFood();
-            if (Math.random() < 0.01) createPowerUp();
-
+            if (Math.random() < 0.02) createFood(); // Randomly create food
+            if (Math.random() < 0.01) createPowerUp(); // Randomly create power-ups
             requestAnimationFrame(gameLoop);
         }
 
+        // Start the game
         gameLoop();
     </script>
 </body>
