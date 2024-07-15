@@ -369,23 +369,22 @@
         }
 
         function applyPowerUp(amoeba, powerUp) {
-            amoeba.powerUp = {
-                type: powerUp.type
-                    duration: 300 // 5 seconds at 60 fps
-            };
+    amoeba.powerUp = {
+        type: powerUp.type,
+        duration: 300 // 5 seconds at 60 fps
+    };
 
-            if (powerUp.type === 'speed') {
-                amoeba.speed *= 2;
-                amoeba.element.style.boxShadow = '0 0 10px #ffff00';
-            } else if (powerUp.type === 'invincibility') {
-                amoeba.element.style.boxShadow = '0 0 10px #00ffff';
-            }
+    if (powerUp.type === 'speed') {
+        amoeba.speed *= 2;
+        amoeba.element.style.boxShadow = '0 0 10px #ffff00';
+    } else if (powerUp.type === 'invincibility') {
+        amoeba.element.style.boxShadow = '0 0 10px #00ffff';
+    }
 
-            powerUp.element.remove();
-            powerUps.splice(powerUps.indexOf(powerUp), 1);
-            updateScore(5);
-        }
-
+    powerUp.element.remove();
+    powerUps.splice(powerUps.indexOf(powerUp), 1);
+    updateScore(5);
+}
         function updateScore(points) {
             score += points;
             scoreDisplay.textContent = `Score: ${score}`;
