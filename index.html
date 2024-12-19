@@ -3,27 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game</title>
+    <title>Amoeba Game</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
             background-color: #f0f8ff;
-            font-family: Arial, sans-serif;
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
         }
         #game-area {
             position: relative;
-            width: 100vw;
-            height: 100vh;
+            width: 80vw;
+            height: 80vh;
+            border: 5px solid #333;
+            background: url("https://via.placeholder.com/800x600/6699CC/FFFFFF?text=Microscopic+World") no-repeat center;
+            background-size: cover;
         }
         .amoeba, .cleaner {
             position: absolute;
             border-radius: 50%;
             cursor: pointer;
-            transition: transform 0.3s ease, background-color 0.3s ease;
+            transition: transform 0.3s ease, background-color 0.3s ease, box-shadow 0.3s ease;
         }
         .amoeba {
             background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 70%);
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
         }
         .cleaner {
             background-color: #800080;
@@ -35,53 +43,121 @@
         }
         .food {
             background-color: #00ff00;
+            box-shadow: 0 0 5px #00ff00;
         }
         .power-up {
             background-color: #ffff00;
             box-shadow: 0 0 5px #ffff00;
+            animation: pulse 2s infinite alternate;
         }
-        #reset-button, #score-display {
+        @keyframes pulse {
+            from {
+                transform: scale(1);
+            }
+            to {
+                transform: scale(1.2);
+            }
+        }
+        .button-panel {
             position: absolute;
             top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 10;
+        }
+        .button-panel button {
             padding: 10px 20px;
             background-color: #4CAF50;
             color: white;
             border: none;
             border-radius: 5px;
             font-size: 16px;
-        }
-        #reset-button {
-            right: 10px;
             cursor: pointer;
+            transition: background-color 0.3s ease;
         }
-        #reset-button:hover {
+        .button-panel button:hover {
             background-color: #45a049;
         }
         #score-display {
+            position: absolute;
+            top: 10px;
             left: 10px;
+            color: white;
+            font-size: 18px;
+            z-index: 10;
+            text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+        }
+        #game-over-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 20;
+            display: none;
+        }
+        #game-over-message h2 {
+            margin-bottom: 20px;
+        }
+        #game-over-message button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        #game-over-message button:hover {
+            background-color: #45a049;
         }
     </style>
 </head>
 <body>
-    <div id="game-area"></div>
-    <button id="reset-button">Reset Game</button>
-    <div id="score-display">Score: 0</div>
+    <div id="game-area">
+        <div class="button-panel">
+            <button id="start-button">Start Game</button>
+            <button id="reset-button">Reset Game</button>
+            <button id="end-button">End Game</button>
+        </div>
+        <div id="score-display">Score: 0</div>
+        <div id="game-over-message">
+            <h2>Game Over</h2>
+            <p>Your final score is: <span id="final-score">0</span></p>
+            <button id="restart-button">Restart</button>
+        </div>
+    </div>
     <script>
         const gameArea = document.getElementById('game-area');
         const scoreDisplay = document.getElementById('score-display');
-        const amoebas = [];
+        const startButton = document.getElementById('start-button');
+        const resetButton = document.getElementById('reset-button');
+        const endButton = document.getElementById('end-button');
+        const gameOverMessage = document.getElementById('game-over-message');
+        const finalScoreDisplay = document.getElementById('final-score');
+        const restartButton = document.getElementById('restart-button');
+        let amoebas = [];
         let cleaner = null;
         let cleanerTimer = 0;
-        const foodParticles = [];
-        const powerUps = [];
+        let foodParticles = [];
+        let powerUps = [];
         let score = 0;
+        let gameLoopInterval;
+        let gameStarted = false;
 
         const evolutionStages = [
-            { color: '#ff9999', size: 1.0 },
-            { color: '#ff6666', size: 1.1 },
-            { color: '#ff3333', size: 1.2 },
-            { color: '#ff0000', size: 1.3 },
-            { color: '#cc0000', size: 1.4 }
+            { color: '#ff9999', size: 1.0, name: 'Stage 1' },
+            { color: '#ff6666', size: 1.1, name: 'Stage 2' },
+            { color: '#ff3333', size: 1.2, name: 'Stage 3' },
+            { color: '#ff0000', size: 1.3, name: 'Stage 4' },
+            { color: '#cc0000', size: 1.4, name: 'Stage 5' }
         ];
 
         function createAmoeba(x, y, size, speed = 1, stage = 0) {
@@ -104,11 +180,15 @@
                 speed: speed,
                 stage: stage,
                 collisions: 0,
-                powerUp: null
+                powerUp: null,
+                lastEvolution: Date.now()
             };
 
             amoeba.addEventListener('mousedown', () => popAmoeba(amoebaObj));
-            amoeba.addEventListener('touchstart', () => popAmoeba(amoebaObj));
+            amoeba.addEventListener('touchstart', (event) => {
+                event.preventDefault();
+                popAmoeba(amoebaObj);
+            });
 
             amoebas.push(amoebaObj);
             return amoebaObj;
@@ -193,11 +273,17 @@
 
         function moveAmoebas() {
             amoebas.forEach(amoeba => {
-                amoeba.vx += (Math.random() - 0.5) * 0.1 * amoeba.speed;
-                amoeba.vy += (Math.random() - 0.5) * 0.1 * amoeba.speed;
+                if (amoeba.powerUp && amoeba.powerUp.type === 'speed') {
+                    amoeba.vx += (Math.random() - 0.5) * 0.2 * amoeba.speed;
+                    amoeba.vy += (Math.random() - 0.5) * 0.2 * amoeba.speed;
+                } else {
+                    amoeba.vx += (Math.random() - 0.5) * 0.1 * amoeba.speed;
+                    amoeba.vy += (Math.random() - 0.5) * 0.1 * amoeba.speed;
+                }
+
                 amoeba.vx *= 0.99;
                 amoeba.vy *= 0.99;
-                
+
                 amoeba.x += amoeba.vx;
                 amoeba.y += amoeba.vy;
 
@@ -213,6 +299,10 @@
                         amoeba.element.style.boxShadow = '';
                         amoeba.powerUp = null;
                     }
+                }
+
+                if (Date.now() - amoeba.lastEvolution > 60000 && amoeba.stage < evolutionStages.length - 1) {
+                    evolveAmoeba(amoeba);
                 }
             });
         }
@@ -310,7 +400,9 @@
                 amoeba.element.style.width = `${amoeba.size}px`;
                 amoeba.element.style.height = `${amoeba.size}px`;
                 amoeba.collisions = 0;
+                amoeba.lastEvolution = Date.now();
                 updateScore(10);
+                console.log(`Amoeba evolved to ${evolutionStages[amoeba.stage].name}`);
             }
         }
 
@@ -383,14 +475,18 @@
             scoreDisplay.textContent = `Score: ${score}`;
         }
 
-        function resetGame() {
+        function initializeGame() {
             gameArea.innerHTML = '';
-            amoebas.length = 0;
+            amoebas = [];
             removeCleaner();
-            foodParticles.length = 0;
-            powerUps.length = 0;
+            foodParticles = [];
+            powerUps = [];
             score = 0;
             updateScore(0);
+
+            // Re-add the button panel and score display
+            gameArea.appendChild(document.querySelector('.button-panel'));
+            gameArea.appendChild(scoreDisplay);
 
             for (let i = 0; i < 10; i++) {
                 createAmoeba(
@@ -401,9 +497,38 @@
             }
         }
 
-        document.getElementById('reset-button').addEventListener('click', resetGame);
+        function startGame() {
+            if (!gameStarted) {
+                initializeGame();
+                gameLoopInterval = setInterval(gameLoop, 1000 / 60);
+                gameStarted = true;
+                startButton.disabled = true;
+                gameOverMessage.style.display = 'none';
+            }
+        }
 
-        resetGame();
+        function endGame() {
+            if (gameStarted) {
+                clearInterval(gameLoopInterval);
+                gameStarted = false;
+                startButton.disabled = false;
+                finalScoreDisplay.textContent = score;
+                gameOverMessage.style.display = 'block';
+            }
+        }
+
+        function resetGame() {
+            endGame();
+            startGame();
+        }
+
+        startButton.addEventListener('click', startGame);
+        resetButton.addEventListener('click', resetGame);
+        endButton.addEventListener('click', endGame);
+        restartButton.addEventListener('click', () => {
+            gameOverMessage.style.display = 'none';
+            resetGame();
+        });
 
         function gameLoop() {
             moveAmoebas();
@@ -418,11 +543,7 @@
 
             if (Math.random() < 0.05) createFood();
             if (Math.random() < 0.01) createPowerUp();
-
-            requestAnimationFrame(gameLoop);
         }
-
-        gameLoop();
     </script>
 </body>
 </html>
